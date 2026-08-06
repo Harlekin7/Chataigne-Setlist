@@ -1,0 +1,67 @@
+{
+  "name": "Setlist Index",
+  "type": "OSC",
+  "path": "Custom",
+  "version": "1.0.0",
+  "description": "Schlanke Bruecke: nimmt aus der State Machine per Consequence 'Set Current Song (Index)' die Index-Nummer des aktuellen Songs entgegen und meldet sie an das Setlist-Dashboard (per OSC /song/index N). Das Triggern der Resolume-Clips bleibt bei euren bestehenden Action-States.",
+  "url": "https://github.com/Harlekin7/Chataigne-Setlist",
+  "downloadURL": "https://github.com/Harlekin7/Chataigne-Setlist",
+  "hasInput": false,
+  "hasOutput": true,
+
+  "defaults": {
+    "autoAdd": false,
+    "OSC Outputs": {
+      "OSC Output": {
+        "local": true,
+        "remoteHost": "127.0.0.1",
+        "remotePort": 8000
+      }
+    }
+  },
+
+  "hideDefaultParameters": [
+    "autoAdd",
+    "colorSendMode",
+    "splitArgs",
+    "autoRange",
+    "autoFeedback",
+    "learn"
+  ],
+
+  "parameters": {
+    "Current Index Param": {
+      "type": "Integer",
+      "default": 0,
+      "min": 0,
+      "description": "Alternativer Weg: statt des Commands kann die State Machine per 'Set Value' diesen Parameter setzen. Aenderungen werden ebenfalls ans Dashboard gemeldet."
+    }
+  },
+
+  "values": {
+    "Current Index": { "type": "Integer", "readOnly": true, "default": 0 }
+  },
+
+  "commands": {
+    "Set Current Song": {
+      "menu": "",
+      "callback": "setCurrentSong",
+      "parameters": {
+        "Index": { "type": "Integer", "default": 1, "min": 0,
+          "description": "Feste Index-Nummer dieses Songs (muss mit der Setlist im Dashboard uebereinstimmen)." }
+      }
+    },
+    "Clear Current": {
+      "menu": "",
+      "callback": "clearCurrent"
+    },
+    "Reset Played": {
+      "menu": "",
+      "callback": "resetPlayed"
+    }
+  },
+
+  "scripts": [
+    "setlistIndex.js"
+  ]
+}

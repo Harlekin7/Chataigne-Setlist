@@ -1,0 +1,15 @@
+# Die laufende Setlist ist Showdaten und gehoert niemandem ausser dem Betreiber.
+# Fehlt die Datei, startet der Server mit einer neutralen Beispiel-Setlist.
+companion/setlist.json
+
+# Veraltete Einzeldatei-Kopie der Web-App. Sie ist ein Duplikat von
+# companion/public/index.html und driftet zwangslaeufig davon weg.
+# Einzige Quelle der Wahrheit ist companion/public/index.html.
+Dashboard-Demo-standalone.html
+
+node_modules/
+npm-debug.log*
+
+Thumbs.db
+Desktop.ini
+.DS_Store

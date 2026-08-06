@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Setlist Dashboard</title>
+<style>
+  :root{
+    --bg:#0a0e16; --panel:#111827; --panel2:#0e1420; --line:#1f2a3a;
+    --txt:#e8eef7; --muted:#8698b0; --muted2:#5c6b82;
+    --accent:#3b82f6; --accent2:#22d3ee; --ok:#22c55e; --warn:#f59e0b; --bad:#ef4444;
+    --radius:14px; --mono:'SF Mono',ui-monospace,'Cascadia Code',Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  /* no-repeat + fixed: sonst kachelt der Gradient (Body-Box ist nur 100vh hoch) und der helle
+     Fleck taucht bei laengeren Seiten ein zweites Mal auf. Grundfarbe deckt den Rest ab. */
+  body{background:var(--bg) radial-gradient(1200px 700px at 80% -10%,#16233b 0%,var(--bg) 55%) no-repeat fixed;
+       color:var(--txt);font-family:var(--sans);-webkit-font-smoothing:antialiased;min-height:100vh}
+  .wrap{max-width:1000px;width:100%;margin:0 auto;padding:14px 16px 40px}
+
+  header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .brand{display:flex;flex-direction:column;line-height:1.15}
+  .brand b{font-size:17px}
+  .brand span{font-size:11px;color:var(--muted2);text-transform:uppercase;letter-spacing:2px}
+  .pill{margin-left:auto;display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;
+        padding:6px 11px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--muted)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--muted2)}
+  .pill.live .dot{background:var(--ok);animation:pulse 1.6s infinite}
+  .pill.demo .dot{background:var(--warn)}
+  .pill.off .dot{background:var(--bad)}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.5)}70%{box-shadow:0 0 0 7px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
+
+  .tabs{display:flex;gap:6px;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:4px;margin-bottom:14px}
+  .tabs button{flex:1;border:0;background:transparent;color:var(--muted);font-weight:700;font-size:14px;padding:10px;border-radius:999px;cursor:pointer;transition:.15s}
+  .tabs button.active{background:var(--accent);color:#fff}
+
+  .card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+  .grid{display:grid;gap:14px}
+  .label{font-size:11px;text-transform:uppercase;letter-spacing:2px;color:var(--muted2)}
+
+  /* Now playing */
+  .now{position:relative;overflow:hidden}
+  .now .accentbar{position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--accent)}
+  .now .pos{font-family:var(--mono);color:var(--muted);font-size:14px;margin-top:2px}
+  .now .cuename{font-size:clamp(26px,7vw,46px);font-weight:800;line-height:1.05;margin:4px 0}
+
+  /* Live list */
+  .listwrap{max-height:56vh;overflow:auto;-webkit-overflow-scrolling:touch;margin-top:4px}
+  .lrow{display:grid;grid-template-columns:40px 1fr auto;gap:12px;align-items:center;padding:14px 14px;
+        border-radius:11px;border:1px solid transparent;cursor:pointer;transition:.15s;font-size:17px}
+  .lrow+ .lrow{margin-top:7px}
+  .lrow .num{font-family:var(--mono);color:var(--muted2);font-size:15px;text-align:center}
+  .lrow .nm{font-weight:700}
+  .lrow .badge{font-family:var(--mono);font-size:12px;color:var(--muted2);background:#0c1522;border:1px solid var(--line);padding:3px 8px;border-radius:7px}
+  .lrow.played .nm{font-weight:600}
+  .lrow.played .num{color:inherit;opacity:.7}
+  .lrow.current{background:#13233c;border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 10px 34px -12px rgba(59,130,246,.7)}
+  .lrow.current .nm{color:#fff!important}
+  .lrow.current .num{color:var(--accent2)}
+  /* Das ::after ist ein viertes Grid-Item. Ohne eigene Spalte landet es in einer neuen
+     impliziten Zeile und macht die aktive Zeile doppelt hoch, daher hier 4 Spalten. */
+  .lrow.current{grid-template-columns:40px 1fr auto auto}
+  .lrow.current::after{content:"▶ JETZT";font-family:var(--sans);font-size:11px;font-weight:800;
+        letter-spacing:1px;color:var(--accent2);white-space:nowrap;align-self:center}
+
+  .btnrow{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+  .btn{border:1px solid var(--line);background:var(--panel);color:var(--txt);font-weight:700;font-size:14px;padding:12px 16px;border-radius:10px;cursor:pointer;transition:.12s}
+  .btn:hover{border-color:var(--accent)}
+  .btn:active{transform:translateY(1px)}
+  .btn.go{background:var(--ok);border-color:var(--ok);color:#04210f}
+  .btn.warn{background:#2a1c05;border-color:var(--warn);color:#ffd98a}
+  .hint{font-size:12px;color:var(--muted2);margin-top:10px;line-height:1.55}
+  .hint code{background:#0b1220;border:1px solid var(--line);padding:1px 5px;border-radius:5px}
+
+  /* Editor */
+  .metaform{display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:14px}
+  .metaform label{font-size:11px;color:var(--muted2);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:5px}
+  input,select{background:#0b1220;border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:10px;font-size:14px;font-family:inherit;width:100%}
+  input:focus{outline:none;border-color:var(--accent)}
+  input[type=color]{padding:2px;height:40px;cursor:pointer}
+
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted2);padding:6px 6px;border-bottom:1px solid var(--line)}
+  td{padding:6px 5px;border-bottom:1px solid #16202f;vertical-align:middle}
+  tr.dragover td{border-top:2px solid var(--accent)}
+  tr.disabled{opacity:.45}
+  .handle{cursor:grab;color:var(--muted2);font-size:20px;text-align:center;user-select:none;line-height:1}
+  .handle:active{cursor:grabbing}
+  .idxin{width:64px;text-align:center;font-family:var(--mono)}
+  .iconbtn{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:8px;width:34px;height:34px;cursor:pointer;font-size:14px}
+  .iconbtn:hover{border-color:var(--accent);color:var(--txt)}
+  /* toggle */
+  .sw{position:relative;display:inline-block;width:46px;height:26px}
+  .sw input{opacity:0;width:0;height:0}
+  .sw span{position:absolute;inset:0;background:#26344a;border-radius:999px;transition:.2s;cursor:pointer}
+  .sw span::before{content:"";position:absolute;height:20px;width:20px;left:3px;top:3px;background:#8aa0bd;border-radius:50%;transition:.2s}
+  .sw input:checked + span{background:var(--ok)}
+  .sw input:checked + span::before{transform:translateX(20px);background:#eafff1}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+  .hidden{display:none!important}
+  @media(min-width:640px){ .metaform{grid-template-columns:1fr} }
+
+  /* ---------- Vollbild / Präsentationsmodus ---------- */
+  #present{position:fixed;inset:0;background:var(--bg);z-index:1000;display:none;flex-direction:column}
+  body.presenting{overflow:hidden}
+  body.presenting #present{display:flex}
+  #present .pscroll{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  #present .pscroll::-webkit-scrollbar{display:none}
+  /* 16:9-optimiert: mittig, formatfüllend, genau 7 Songs sichtbar */
+  .prow{display:flex;align-items:center;justify-content:center;text-align:center;width:100%;
+        height:var(--prow-h,14.28vh);padding:0 8vw;gap:.42em;
+        font-size:clamp(22px,4.6vh,64px);font-weight:800;line-height:1.25;overflow:hidden;
+        color:var(--muted2);opacity:.4;transition:opacity .25s,color .25s,background .25s,font-size .2s}
+  /* overflow:hidden braucht es fuer text-overflow:ellipsis, es clippt aber auch vertikal.
+     padding schafft Luft in der Clip-Box, das negative margin haelt die Layouthoehe gleich -
+     so koennen Ober- und Unterlaengen nie abgeschnitten werden, egal welche Schrift greift. */
+  .prow .pnm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+        padding-block:.18em;margin-block:-.18em}
+  .prow.pplayed{opacity:.9}
+  .prow.pcurrent{opacity:1;color:#fff;font-size:clamp(30px,5.9vh,88px);
+        background:radial-gradient(130% 100% at 50% 50%,rgba(59,130,246,.22),rgba(59,130,246,0) 72%)}
+  .prow.pcurrent .pnm{text-transform:uppercase;letter-spacing:.5px}
+  /* Marker als CSS-Dreiecke statt Glyphen: symmetrische Box, daher von align-items:center
+     exakt auf die Zeilenmitte gesetzt - unabhaengig von den Metriken der Schrift. */
+  .prow.pcurrent::before,
+  .prow.pcurrent::after{content:"";flex:0 0 auto;width:0;height:0;opacity:.9;
+        border-top:.26em solid transparent;border-bottom:.26em solid transparent}
+  .prow.pcurrent::before{border-left:.3em solid var(--accent2)}
+  .prow.pcurrent::after{border-right:.3em solid var(--accent2)}
+  #present .exitfs{position:fixed;top:16px;right:18px;z-index:1001;width:44px;height:44px;border-radius:50%;
+        border:1px solid var(--line);background:rgba(17,24,39,.7);color:var(--muted);font-size:20px;cursor:pointer;
+        opacity:0;transition:opacity .3s}
+  #present.showui .exitfs{opacity:1}
+  #present .fshint{position:fixed;bottom:14px;left:0;right:0;text-align:center;font-size:12px;color:var(--muted2);
+        z-index:1001;opacity:0;transition:opacity .3s}
+  #present.showui .fshint{opacity:.7}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><b id="showName">Setlist</b><span>Setlist Dashboard · Chataigne</span></div>
+    <div class="pill off" id="statusPill"><span class="dot"></span><span id="statusTxt">verbinde…</span></div>
+  </header>
+
+  <div class="tabs">
+    <button id="tabLive" class="active" onclick="setView('live')">▶ LIVE</button>
+    <button id="tabEdit" onclick="setView('edit')">✎ SETLIST BEARBEITEN</button>
+  </div>
+
+  <!-- LIVE -->
+  <section id="viewLive" class="grid">
+    <div class="card now">
+      <div class="accentbar" id="accentBar"></div>
+      <div class="label">Jetzt läuft</div>
+      <div class="cuename" id="nowName">—</div>
+      <div class="pos" id="nowPos"></div>
+    </div>
+    <div class="card">
+      <div class="label" style="margin-bottom:10px">Setlist</div>
+      <div class="listwrap" id="liveList"></div>
+      <div class="btnrow">
+        <button class="btn" onclick="enterPresent()">⛶ Vollbild</button>
+        <button class="btn warn" onclick="resetPlayed()">↺ Gespielt-Markierung zurücksetzen</button>
+      </div>
+      <div class="hint">Der aktive Song wird von Chataigne gesetzt (Consequence „Set Current Song"). Bereits gespielte Songs erscheinen in ihrer definierten Farbe. Tipp: Ein Klick auf einen Song setzt ihn manuell als „jetzt" – praktisch zum Testen ohne Chataigne.</div>
+    </div>
+  </section>
+
+  <!-- EDITOR -->
+  <section id="viewEdit" class="grid hidden">
+    <div class="card">
+      <div class="metaform"><div><label>Show-Name</label><input id="mName"></div></div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr>
+            <th style="width:28px"></th><th style="width:34px">#</th><th>Song-Name</th>
+            <th style="width:80px">Index</th><th style="width:64px">Aktiv</th>
+            <th style="width:70px">Farbe</th><th style="width:44px"></th>
+          </tr></thead>
+          <tbody id="editBody"></tbody>
+        </table>
+      </div>
+      <div class="toolbar">
+        <button class="btn" onclick="addSong()">＋ Song hinzufügen</button>
+        <button class="btn go" onclick="save()">💾 Speichern &amp; senden</button>
+        <button class="btn" onclick="exportJson()">⭳ JSON</button>
+        <button class="btn" onclick="document.getElementById('imp').click()">⭱ Import</button>
+        <input type="file" id="imp" accept="application/json" class="hidden" onchange="importJson(event)">
+      </div>
+      <div class="hint" id="saveHint">
+        <b>Index</b> = feste Nummer des Songs (muss mit der Consequence in eurer State Machine übereinstimmen) –
+        ändert sich beim Umsortieren <b>nicht</b>. Die <b>Reihenfolge</b> stellst du per Drag&amp;Drop am Griff
+        (<code>⠿</code>) ein. <b>Aktiv</b>-Schalter aus = Song wird im Live-Dashboard ausgeblendet.
+        <b>Farbe</b> = Textfarbe, sobald der Song gespielt wurde.
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- Vollbild / Präsentationsmodus -->
+<div id="present">
+  <button class="exitfs" title="Vollbild verlassen (Esc)" onclick="exitPresent()">✕</button>
+  <div class="pscroll" id="presentScroll"></div>
+  <div class="fshint">Vollbild verlassen: Esc · oben rechts ✕</div>
+</div>
+
+<script>
+/* ---------- Helfer (inline, identisch zu lib/setlist-engine.js) ---------- */
+function enabledOrdered(songs){return (songs||[]).filter(function(s){return s.enabled!==false;});}
+function findByIndex(songs,idx){for(var i=0;i<(songs||[]).length;i++)if(songs[i].index===idx)return songs[i];return null;}
+function positionOf(songs,idx){var l=enabledOrdered(songs);for(var i=0;i<l.length;i++)if(l[i].index===idx)return i+1;return 0;}
+
+/* ---------- State ---------- */
+var DEMO={meta:{name:'Demo Show 2026'},songs:[
+  {index:1,name:'Intro',enabled:true,playedColor:'#22c55e'},
+  {index:2,name:'Song 1 – Opener',enabled:true,playedColor:'#22c55e'},
+  {index:3,name:'Song 2',enabled:true,playedColor:'#22c55e'},
+  {index:4,name:'Ballade',enabled:true,playedColor:'#a855f7'},
+  {index:5,name:'Soundcheck-Filler',enabled:false,playedColor:'#64748b'},
+  {index:6,name:'Song 4 – Uptempo',enabled:true,playedColor:'#eab308'},
+  {index:7,name:'Zugabe',enabled:true,playedColor:'#f97316'}
+]};
+var data=null, currentIndex=-1, played={}, mode='demo', view='live', dirty=false, serverAvailable=false;
+
+/* ---------- Boot ---------- */
+function boot(){
+  fetch('/api/state',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json();})
+    .then(function(s){ serverAvailable=true; mode='live'; applySnapshot(s); connectSSE(); afterData(); })
+    .catch(function(){ data=JSON.parse(JSON.stringify(DEMO)); mode='demo'; setStatus('demo','DEMO-MODUS'); afterData(); });
+}
+function afterData(){ fillEditor(); renderLive(); }
+function applySnapshot(s){
+  if(!dirty){ data={meta:s.meta,songs:s.songs}; }
+  currentIndex=s.currentIndex; played={}; (s.played||[]).forEach(function(i){played[i]=true;});
+  document.getElementById('showName').textContent=(data.meta&&data.meta.name)||'Setlist';
+  renderLive(); if(!dirty) fillEditor();
+}
+function connectSSE(){
+  try{ var es=new EventSource('/api/events');
+    es.addEventListener('state',function(ev){ applySnapshot(JSON.parse(ev.data)); setStatus('live','LIVE · verbunden'); });
+    es.onerror=function(){ setStatus('off','Server getrennt'); };
+  }catch(e){}
+}
+function setStatus(cls,txt){var p=document.getElementById('statusPill');p.className='pill '+cls;document.getElementById('statusTxt').textContent=txt;}
+
+/* ---------- Render LIVE ---------- */
+function renderLive(){
+  if(!data)return;
+  document.getElementById('showName').textContent=(data.meta&&data.meta.name)||'Setlist';
+  var cur=findByIndex(data.songs,currentIndex);
+  document.getElementById('nowName').textContent=cur?cur.name:'— kein Song aktiv —';
+  var pos=positionOf(data.songs,currentIndex), total=enabledOrdered(data.songs).length;
+  document.getElementById('nowPos').textContent=cur?('Song '+pos+' / '+total):'';
+  document.getElementById('accentBar').style.background=cur?'var(--accent)':'#334';
+
+  var box=document.getElementById('liveList'); box.innerHTML='';
+  var list=enabledOrdered(data.songs), activeEl=null;
+  list.forEach(function(s,i){
+    var row=document.createElement('div'); row.className='lrow';
+    var isCur=s.index===currentIndex, isPlayed=!!played[s.index];
+    if(isCur)row.classList.add('current');
+    if(isPlayed&&!isCur){ row.classList.add('played'); row.style.color=s.playedColor; }
+    row.innerHTML='<div class="num">'+(i+1)+'</div><div class="nm">'+esc(s.name)+'</div>'+
+                  '<div class="badge">#'+s.index+'</div>';
+    row.onclick=function(){ setCurrent(s.index); };
+    box.appendChild(row); if(isCur)activeEl=row;
+  });
+  if(activeEl && lastScrolledIndex!==currentIndex){ activeEl.scrollIntoView({block:'center',behavior:'smooth'}); }
+  lastScrolledIndex=currentIndex;
+  renderPresent();
+}
+var lastScrolledIndex=-99;
+
+/* ---------- Vollbild / Präsentationsmodus ---------- */
+var presenting=false, lastPresentIndex=-99, uiTimer=null;
+var presentSig='';
+var VISIBLE=7, CENTER_ROW=4;   // 7 Songs sichtbar, aktueller = 4. Zeile (= Mitte)
+function presentSignature(list){ return list.map(function(s){return s.index+'§'+s.name+'§'+s.playedColor;}).join('|'); }
+function renderPresent(){
+  var sc=document.getElementById('presentScroll'); if(!sc)return;
+  var list=enabledOrdered(data.songs);
+  // DOM nur neu aufbauen, wenn sich die Setlist wirklich geändert hat (sonst flackert/springt der Scroll)
+  var sig=presentSignature(list);
+  if(sig!==presentSig){
+    presentSig=sig; sc.innerHTML='';
+    list.forEach(function(s){ var row=document.createElement('div'); row.className='prow'; row.dataset.idx=s.index;
+      row.innerHTML='<div class="pnm">'+esc(s.name)+'</div>'; sc.appendChild(row); });
+    lastPresentIndex=-99;   // nach Rebuild neu positionieren
+  }
+  // Zustände (aktuell / gespielt / Farbe) in-place aktualisieren
+  var rows=sc.children, curPos=-1, curEl=null;
+  for(var i=0;i<rows.length;i++){
+    var s=list[i], row=rows[i];
+    var isCur=s.index===currentIndex, isPlayed=!!played[s.index];
+    row.classList.toggle('pcurrent',isCur);
+    row.classList.toggle('pplayed',isPlayed&&!isCur);
+    row.style.color=(isPlayed&&!isCur)?s.playedColor:'';
+    if(isCur){ curPos=i; curEl=row; }
+  }
+  // Scrollen: aktueller Song in die 4. Zeile; Anfang bleibt oben, Ende bleibt unten (geclamped)
+  if(presenting && curEl && lastPresentIndex!==currentIndex){
+    var rowH=curEl.getBoundingClientRect().height || (sc.clientHeight/VISIBLE);
+    var target=(curPos-(CENTER_ROW-1))*rowH;                 // 3 Zeilen über dem aktuellen sichtbar
+    var maxS=Math.max(0, sc.scrollHeight-sc.clientHeight);
+    target=Math.max(0, Math.min(target, maxS));
+    sc.scrollTo({top:target, behavior:'smooth'});
+  }
+  lastPresentIndex=currentIndex;
+}
+function sizeRows(){   // genau 7 Songs sichtbar: Zeilenhöhe = Bildhöhe / 7
+  var sc=document.getElementById('presentScroll'); if(!sc)return;
+  var h=sc.clientHeight; if(h>0) document.documentElement.style.setProperty('--prow-h',(h/7)+'px');
+}
+function enterPresent(){
+  presenting=true; document.body.classList.add('presenting'); lastPresentIndex=-99;
+  sizeRows(); renderPresent();
+  // echtes Browser-Vollbild versuchen (best effort – im Vorschau-Frame ggf. blockiert)
+  var el=document.documentElement;
+  if(el.requestFullscreen){ el.requestFullscreen().catch(function(){}); }
+  setTimeout(function(){ sizeRows(); lastPresentIndex=-99; renderPresent(); }, 250); // nach FS-Übergang neu messen
+  flashUI();
+}
+function exitPresent(){
+  presenting=false; document.body.classList.remove('presenting');
+  if(document.fullscreenElement && document.exitFullscreen){ document.exitFullscreen().catch(function(){}); }
+}
+function flashUI(){   // Exit-Button + Hinweis kurz einblenden, dann ausblenden
+  var p=document.getElementById('present'); if(!p)return; p.classList.add('showui');
+  clearTimeout(uiTimer); uiTimer=setTimeout(function(){ p.classList.remove('showui'); }, 2800);
+}
+document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&presenting)exitPresent(); });
+document.addEventListener('mousemove',function(){ if(presenting)flashUI(); });
+document.addEventListener('touchstart',function(){ if(presenting)flashUI(); },{passive:true});
+document.addEventListener('fullscreenchange',function(){
+  // wenn der User das native Vollbild verlässt (Esc/Geste), auch Overlay schließen
+  if(!document.fullscreenElement && presenting) exitPresent();
+  else if(presenting){ setTimeout(function(){ sizeRows(); lastPresentIndex=-99; renderPresent(); }, 120); }
+});
+window.addEventListener('resize',function(){ if(presenting){ sizeRows(); lastPresentIndex=-99; renderPresent(); } });
+function esc(s){return String(s).replace(/[&<>"]/g,function(m){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m];});}
+
+/* ---------- Editor ---------- */
+function fillEditor(){
+  document.getElementById('mName').value=(data.meta&&data.meta.name)||'';
+  var b=document.getElementById('editBody'); b.innerHTML='';
+  (data.songs||[]).forEach(function(s,i){ b.appendChild(songRow(s,i)); });
+}
+function songRow(s,i){
+  var tr=document.createElement('tr'); tr.dataset.i=i; if(s.enabled===false)tr.classList.add('disabled');
+  tr.innerHTML=
+    '<td><div class="handle" draggable="true" title="Ziehen zum Sortieren">⠿</div></td>'+
+    '<td style="color:var(--muted2);font-family:var(--mono);font-size:12px">'+(i+1)+'</td>'+
+    '<td><input value="'+esc(s.name||'')+'" oninput="upd('+i+',\'name\',this.value)"></td>'+
+    '<td><input class="idxin" type="number" min="0" value="'+(s.index)+'" oninput="upd('+i+',\'index\',this.value)"></td>'+
+    '<td style="text-align:center"><label class="sw"><input type="checkbox" '+(s.enabled!==false?'checked':'')+' onchange="upd('+i+',\'enabled\',this.checked)"><span></span></label></td>'+
+    '<td><input type="color" value="'+(s.playedColor||'#22c55e')+'" oninput="upd('+i+',\'playedColor\',this.value)"></td>'+
+    '<td><button class="iconbtn" title="löschen" onclick="delSong('+i+')">✕</button></td>';
+  var h=tr.querySelector('.handle');
+  h.addEventListener('dragstart',function(e){ dragFrom=i; e.dataTransfer.effectAllowed='move'; try{e.dataTransfer.setData('text/plain',String(i));}catch(_){} });
+  tr.addEventListener('dragover',function(e){ e.preventDefault(); tr.classList.add('dragover'); });
+  tr.addEventListener('dragleave',function(){ tr.classList.remove('dragover'); });
+  tr.addEventListener('drop',function(e){ e.preventDefault(); tr.classList.remove('dragover'); dropOn(parseInt(tr.dataset.i,10)); });
+  return tr;
+}
+var dragFrom=-1;
+function dropOn(to){ if(dragFrom<0||dragFrom===to)return; var a=data.songs; var it=a.splice(dragFrom,1)[0]; a.splice(to,0,it); dragFrom=-1; dirty=true; fillEditor(); renderLive(); }
+function upd(i,k,v){ if(k==='index')v=parseInt(v,10)||0; data.songs[i][k]=v; dirty=true;
+  if(k==='enabled'){ document.getElementById('editBody').children[i].classList.toggle('disabled',!v); }
+  renderLive(); }
+function addSong(){ var mx=0; data.songs.forEach(function(s){if(s.index>mx)mx=s.index;});
+  data.songs.push({index:mx+1,name:'Neuer Song',enabled:true,playedColor:'#22c55e'}); dirty=true; fillEditor(); renderLive(); }
+function delSong(i){ data.songs.splice(i,1); dirty=true; fillEditor(); renderLive(); }
+function readMeta(){ data.meta=data.meta||{}; data.meta.name=document.getElementById('mName').value; }
+
+function save(){ readMeta(); var hint=document.getElementById('saveHint');
+  if(serverAvailable){
+    fetch('/api/setlist',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
+      .then(function(r){return r.json();}).then(function(res){ dirty=false; hint.innerHTML='✅ Gespeichert &amp; gesendet ('+res.songs+' Songs).'; })
+      .catch(function(){ hint.textContent='⚠ Speichern fehlgeschlagen.'; });
+  } else { dirty=false; hint.innerHTML='ℹ️ Demo-Modus: nur lokal geändert. Nutze „JSON" zum Sichern.'; }
+}
+function exportJson(){ readMeta(); var b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='setlist.json'; a.click(); }
+function importJson(ev){ var f=ev.target.files[0]; if(!f)return; var r=new FileReader();
+  r.onload=function(){ try{ data=JSON.parse(r.result); dirty=true; fillEditor(); renderLive(); }catch(e){alert('Ungültige JSON-Datei');} }; r.readAsText(f); }
+
+/* ---------- Aktionen ---------- */
+function setCurrent(idx){
+  if(serverAvailable){ fetch('/api/current',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({index:idx})}).catch(function(){}); }
+  else { currentIndex=idx; if(findByIndex(data.songs,idx))played[idx]=true; renderLive(); }
+}
+function resetPlayed(){
+  if(serverAvailable){ fetch('/api/reset',{method:'POST'}).catch(function(){}); }
+  else { played={}; renderLive(); }
+}
+
+/* ---------- View ---------- */
+function setView(v){ view=v;
+  document.getElementById('viewLive').classList.toggle('hidden',v!=='live');
+  document.getElementById('viewEdit').classList.toggle('hidden',v!=='edit');
+  document.getElementById('tabLive').classList.toggle('active',v==='live');
+  document.getElementById('tabEdit').classList.toggle('active',v==='edit');
+}
+
+boot();
+</script>
+</body>
+</html>
