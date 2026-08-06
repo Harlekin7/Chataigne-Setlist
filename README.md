@@ -1,187 +1,167 @@
-# Setlist Dashboard für Chataigne
+# Setlist Dashboard for Chataigne
 
-Ein **Live-Dashboard mit variabler Setlist**, das optisch mitläuft — angetrieben durch den
-**aktuellen Song-Index**, den eure bestehende Chataigne-State-Machine liefert.
+A **live setlist display driven by the current song index** that your Chataigne state
+machine already knows. Chataigne stays the show engine; this is only control and display.
 
-Entwickelt für Groh-P.A. · Node 22 getestet · keine npm-Abhängigkeiten.
-
----
-
-## Kurzfassung
-
-Chataigne triggert die Clips wie bisher. Jeder Song-State meldet zusätzlich seine
-**Index-Nummer** an ein schlankes Custom-Modul, das sie per OSC an einen kleinen
-Node-Server schickt. Der Server hält die Setlist, merkt sich den aktuellen und die
-gespielten Songs und liefert die Web-App aus — Live-Ansicht, Bühnen-Vollbild und
-Setlist-Editor mit Drag&Drop.
-
-**In drei Schritten:** `INSTALL.bat` doppelklicken → Chataigne neu starten und das Modul
-hinzufügen → an jeden Song-State eine Consequence *Set Current Song* mit seiner
-Index-Nummer hängen. Server starten mit `START-DASHBOARD.bat`, Dashboard auf
-`http://localhost:8080`.
-
-### Live-Ansicht
-
-Aktueller Song hervorgehoben, gespielte Songs in ihrer Farbe, deaktivierte ausgeblendet.
-
-![Live-Ansicht des Dashboards](docs/live.png)
-
-### Vollbild für Bühne und Beamer
-
-Controlfrei, der laufende Song wird automatisch mittig gehalten.
-
-![Vollbild-Ansicht](docs/vollbild.png)
-
-### Setlist-Editor
-
-Name, feste Index-Nummer, Aktiv-Schalter und Farbe pro Song; Reihenfolge per Drag&Drop.
-
-![Setlist-Editor](docs/editor.png)
+Plain Node, **no npm dependencies**. Tested on Node 22.
 
 ---
 
-## 1. Das Konzept (was bleibt, was neu ist)
+## How it works
 
-**Unverändert (euer bestehendes Setup):**
-LTC läuft rein → Resolume synct → **Chataigne triggert die Clips** über eure Action-States
-(AND aus Startzeit + Endzeit + „LTC Playing"). Daran fassen wir *nichts* an.
-
-**Neu — wir setzen genau dahinter an:**
-Jeder dieser States bekommt **eine zusätzliche Consequence**: er meldet die **Index-Nummer
-des aktuellen Songs** an ein schlankes Custom-Modul. Das Modul reicht den Index an die
-Web-App weiter, die daraus Setlist-Pflege und Live-Anzeige macht.
+Every song state in your state machine gets **one extra consequence** that reports the
+song's **index number** to a slim custom module. The module forwards it over OSC to a small
+Node server, which keeps the setlist, remembers the current and already-played songs, and
+serves the web app.
 
 ```
-   ┌──────────────────────── CHATAIGNE (unverändert + 1 Consequence pro State) ───────────┐
-   │                                                                                        │
-   │  LTC ──▶ State-Machine ──(triggert wie bisher)──▶ Resolume-Clips                        │
-   │              │                                                                          │
-   │              └── zusätzliche Consequence:  Command → "Setlist Index" → Set Current Song │
-   │                                                            │  (Index dieses Songs)      │
-   │                                                   Custom-Modul "Setlist Index"          │
-   └────────────────────────────────────────────────────────┬─────────────────────────────┘
-                                                             │ OSC  /song/index <N>
-                                                             ▼
-                                        ┌──────────────── COMPANION (Node) ────────────────┐
-                                        │  • speichert die Setlist (setlist.json)           │
-                                        │  • merkt sich „gespielt", aktueller Song          │
-                                        │  • liefert die Web-App aus                         │
-                                        └───────────────────────┬───────────────────────────┘
-                                                                │ HTTP + SSE
-                                                                ▼
-                                     Browser (Laptop / Tablet / Beamer-Screen)
-                        ┌───────────────────────────────────────────────────────────┐
-                        │  LIVE-Dashboard  +  Setlist-Editor (Drag&Drop, Farben …)   │
-                        └───────────────────────────────────────────────────────────┘
+  CHATAIGNE                                    your existing states, plus one consequence
+  ─────────                                    ────────────────────────────────────────────
+  state machine ──▶ triggers clips as before
+        │
+        └──▶ consequence: Command → "Setlist Index" → Set Current Song (Index)
+                                  │
+                          custom module "Setlist Index"
+                                  │  OSC  /song/index <N>
+                                  ▼
+                      ┌──────── COMPANION (Node) ────────┐
+                      │  stores setlist.json              │
+                      │  tracks current + played songs    │
+                      │  serves the web app               │
+                      └────────────────┬──────────────────┘
+                                       │  HTTP + SSE
+                                       ▼
+                    browser — laptop, tablet or an external display
 ```
 
-**Warum die getrennte Web-App und nicht alles im Chataigne-Backend?**
-Umsortieren per Drag&Drop gibt es in Chataigne nur für „Manager"-Items im Editor; das
-eingebaute Web-Dashboard ist ein **festes Canvas** (kein datengetriebener, automatisch
-durchlaufender Songlisten-View), und Script-Parameter lassen sich weder per Drag&Drop
-umsortieren noch als Farb-Parameter anlegen. Eine schlanke Web-App löst genau das —
-Chataigne bleibt die Show-Engine, die Web-App ist nur Bedienung + Anzeige.
+Nothing about your clip triggering changes. The module only rides along.
+
+**Why a separate web app instead of Chataigne's own dashboard?** Chataigne's built-in
+dashboard is a fixed canvas rather than a data-driven, self-advancing song list, drag & drop
+reordering only exists for manager items in the editor, and script parameters can neither be
+reordered by dragging nor declared as color parameters. A small web app solves exactly that.
+
+### Live view
+
+Current song highlighted, played songs in their color, disabled songs hidden.
+
+![Live view of the dashboard](docs/live.png)
+
+### Fullscreen for external displays
+
+Control-free, and the running song is kept centred automatically.
+
+![Fullscreen view](docs/fullscreen.png)
+
+### Setlist editor
+
+Name, fixed index number, active switch and color per song; order by drag & drop.
+
+![Setlist editor](docs/editor.png)
 
 ---
 
-## 2. Paketinhalt
+## What's in the package
 
 ```
 setlist-dashboard/
 ├── README.md
-├── INSTALL.bat                       ← Modul installieren (Windows, Doppelklick)
-├── START-DASHBOARD.bat               ← Server starten (Windows, Doppelklick)
+├── INSTALL.bat                       ← install the module (Windows, double-click)
+├── START-DASHBOARD.bat               ← start the server (Windows, double-click)
 ├── lib/
-│   └── setlist-engine.js             ← gemeinsame Helfer (Reihenfolge/Index)
+│   └── setlist-engine.js             ← shared helpers (order / index)
 ├── test/
-│   └── engine.test.js                ← Unit-Tests (node test/engine.test.js)
+│   └── engine.test.js                ← unit tests (node test/engine.test.js)
 ├── chataigne-module/
 │   └── Setlist Index/
-│       ├── module.json               ← Custom-Modul (Definition)
-│       └── setlistIndex.js           ← Custom-Modul (Logik)
+│       ├── module.json               ← custom module (definition)
+│       └── setlistIndex.js           ← custom module (logic)
 └── companion/
-    ├── server.js                     ← Companion-Server (reines Node)
+    ├── server.js                     ← companion server (plain Node)
     ├── package.json
     └── public/
-        └── index.html                ← Web-App: Live-Dashboard + Editor
+        └── index.html                ← web app: live dashboard + editor
 ```
+
+`companion/setlist.json` is created on first save and is deliberately not in the repository —
+it holds show data. Without it the server starts from a neutral example setlist.
 
 ---
 
-## 3. Einrichtung
+## Setup
 
-### Der schnelle Weg (Windows)
+### The quick way (Windows)
 
-| Datei | macht was |
-|-------|-----------|
-| **`INSTALL.bat`** | prüft Node, kopiert das Modul nach `Dokumente\Chataigne\modules`, läuft den Selbsttest, warnt wenn Chataigne noch offen ist, legt auf Wunsch eine Desktop-Verknüpfung an |
-| **`START-DASHBOARD.bat`** | startet den Server und öffnet den Browser; warnt vorab, wenn Port 8080 oder 8000 schon belegt ist |
+| File | What it does |
+|------|--------------|
+| **`INSTALL.bat`** | checks Node, copies the module to `Documents\Chataigne\modules`, runs the self-test, warns if Chataigne is still open, optionally creates a desktop shortcut |
+| **`START-DASHBOARD.bat`** | starts the server and opens the browser; warns up front if port 8080 or 8000 is already taken |
 
-Doppelklick auf `INSTALL.bat`, Chataigne neu starten, fertig — danach nur noch
-Schritt 3 und 4 unten. Andere Ports: vor dem Start `set HTTP_PORT=8090` bzw.
-`set OSC_IN_PORT=8010` in derselben Konsole setzen.
+Double-click `INSTALL.bat`, restart Chataigne, then do steps 3 and 4 below. To use other
+ports, set `set HTTP_PORT=8090` or `set OSC_IN_PORT=8010` in the same console first.
 
-### Der manuelle Weg
+### The manual way
 
-#### Schritt 1 — Companion starten
+#### Step 1 — start the companion
 ```bash
 cd companion
 node server.js
 ```
-→ `Dashboard: http://localhost:8080`, `OSC-In: Port 8000`. Keine Installation nötig (Node ≥ 16).
-Ports bei Bedarf: `HTTP_PORT=8080 OSC_IN_PORT=8000 node server.js`.
+→ `Dashboard: http://localhost:8080`, `OSC in: port 8000`. Nothing to install (Node ≥ 16).
+Ports if needed: `HTTP_PORT=8080 OSC_IN_PORT=8000 node server.js`.
 
-#### Schritt 2 — Chataigne-Modul „Setlist Index" installieren
-1. Ordner `chataigne-module/Setlist Index/` nach `Documents/Chataigne/modules/` kopieren.
+#### Step 2 — install the Chataigne module "Setlist Index"
+1. Copy the folder `chataigne-module/Setlist Index/` into `Documents/Chataigne/modules/`.
 2. In Chataigne: **Modules → ＋ → Custom → Setlist Index**.
-3. Am Modul den **OSC Output** prüfen: *Local* = an, *Remote Host* = `127.0.0.1`,
-   *Remote Port* = **8000**. Das Modul bringt diese Werte als Default mit — bei einem neu
-   hinzugefügten Modul sollten sie schon stimmen. Falls nicht (z. B. bei einem Modul, das
-   noch aus einer älteren Version im Projekt liegt): hier von Hand setzen. **Ein falscher
-   Remote Port ist die häufigste Ursache dafür, dass im Dashboard nichts passiert.**
+3. Check the **OSC output** on the module: *Local* = on, *Remote Host* = `127.0.0.1`,
+   *Remote Port* = **8000**. The module ships these as defaults, so a freshly added module
+   should already be correct. If it is not — for example an instance still stored in the
+   project from an older version — set them by hand here. **A wrong remote port is the most
+   common reason nothing happens in the dashboard.**
 
-#### Schritt 3 — Consequence an die States hängen
-An **jeden Song-State** in eurer State Machine zusätzlich zur bestehenden Clip-Logik:
+#### Step 3 — attach the consequence to your states
+On **every song state** in your state machine, in addition to your existing clip logic:
 
-> **Consequence** · Typ **Command** · Ziel **Setlist Index → Set Current Song** ·
-> Parameter **Index** = feste Nummer dieses Songs
+> **Consequence** · type **Command** · target **Setlist Index → Set Current Song** ·
+> parameter **Index** = this song's fixed number
 
-Diese Index-Nummer ist die Identität des Songs und muss mit der Setlist im Dashboard
-übereinstimmen. (Alternativ könnt ihr per „Set Value" den Modul-Parameter *Current Index Param*
-setzen — wirkt identisch.)
+That index number is the song's identity and has to match the setlist in the dashboard.
+(Alternatively you can use "Set Value" on the module parameter *Current Index Param* — it
+behaves the same.)
 
-#### Schritt 4 — Setlist im Dashboard bauen
-Browser auf **http://localhost:8080** → **SETLIST BEARBEITEN**:
-Songs anlegen (Name, **Index** = die Nummern aus euren States, Aktiv-Schalter, Farbe für
-„gespielt"), per **Drag&Drop am Griff ⠿** in Anzeige-Reihenfolge bringen → **Speichern & senden**.
+#### Step 4 — build the setlist in the dashboard
+Open **http://localhost:8080** → **EDIT SETLIST**: add songs (name, **index** = the numbers
+from your states, active switch, color for "played"), drag them into display order **by the
+handle ⠿**, then **Save & send**.
 
-### Fertig
-Beim Durchlaufen der States meldet Chataigne den Index; das Dashboard hebt den aktuellen
-Song hervor, färbt gespielte Songs ein und blendet deaktivierte aus.
+### Done
+
+As the states run, Chataigne reports the index; the dashboard highlights the current song,
+colors the played ones and hides the disabled ones.
 
 ---
 
-## 4. Bedienung
+## Using it
 
 **LIVE**
-- „Jetzt läuft" mit Songname + Position (*Song X / Y*).
-- Setlist-Liste: **aktueller Song hervorgehoben**, **gespielte in ihrer Farbe**,
-  **deaktivierte ausgeblendet**, automatisches Mitscrollen.
-- **↺ Gespielt-Markierung zurücksetzen** (Reset). Geht auch aus Chataigne über den
-  Command *Reset Played*.
-- Klick auf einen Song = manuell als „jetzt" setzen (praktisch zum Testen ohne Chataigne).
-- **⛶ Vollbild** = controlfreie Bühnen-/Beamer-Ansicht: nur die Songs, volle Breite, von oben
-  nach unten. Der spielende Song wird automatisch mittig gehalten; am Anfang/Ende bleibt er
-  entsprechend oben/unten (kein künstliches Zentrieren). Verlassen mit **Esc** oder ✕ oben rechts.
+- "Now playing" with the song name and position (*Song X / Y*).
+- The setlist: **current song highlighted**, **played songs in their color**,
+  **disabled songs hidden**, scrolling along automatically.
+- **↺ Reset played marks**. Also available from Chataigne via the command *Reset Played*.
+- Clicking a song sets it as "now" by hand — handy for testing without Chataigne.
+- **⛶ Fullscreen** = a control-free view for external displays: just the songs, full width,
+  top to bottom. The playing song is kept centred; at the very start and end it stays at the
+  top or bottom instead of being centred artificially. Leave with **Esc** or the ✕ top right.
 
-**SETLIST BEARBEITEN**
-- Show-Name; pro Song: Name, **feste Index-Nr**, **Aktiv**-Schalter, **Farbe** (Textfarbe wenn gespielt).
-- **Drag&Drop** am Griff ⠿ zum Umsortieren — die Index-Nummer bleibt dabei unverändert.
-- Song hinzufügen/löschen, **Speichern & senden**, **JSON** export/import.
+**EDIT SETLIST**
+- Show name; per song: name, **fixed index number**, **active** switch, **color** (text color
+  once played).
+- **Drag & drop** by the handle ⠿ to reorder — the index number stays as it is.
+- Add or delete songs, **Save & send**, export/import **JSON**.
 
 ---
 
-## 5. Datenmodell `setlist.json`
+## Data model `setlist.json`
 
 ```json
 {
@@ -194,40 +174,49 @@ Song hervor, färbt gespielte Songs ein und blendet deaktivierte aus.
 }
 ```
 
-- **index** — feste Identität = die Nummer, die Chataigne meldet. Ändert sich beim Umsortieren nicht.
-- **Array-Reihenfolge** — reine Anzeige-Reihenfolge (Drag&Drop).
-- **enabled** — `false` blendet den Song im Live-Dashboard komplett aus.
-- **playedColor** — Textfarbe, sobald der Song einmal „jetzt" war.
+- **index** — the fixed identity, i.e. the number Chataigne reports. Reordering does not
+  change it.
+- **array order** — display order only (drag & drop).
+- **enabled** — `false` hides the song from the live dashboard entirely.
+- **playedColor** — text color once the song has been "now".
 
 ---
 
-## 6. OSC-Referenz (Chataigne → Companion, Port 8000)
+## OSC reference (Chataigne → companion, port 8000)
 
-| Adresse        | Argument | Wirkung                                             |
+| Address        | Argument | Effect                                              |
 |----------------|----------|-----------------------------------------------------|
-| `/song/index`  | `int`    | aktueller Song (dieser Index); markiert ihn „gespielt" |
-| `/song/reset`  | `1`      | „gespielt"-Markierungen zurücksetzen                |
+| `/song/index`  | `int`    | current song (this index); also marks it as played  |
+| `/song/reset`  | `1`      | clear the "played" marks                            |
 
-`/song/index -1` (bzw. Command *Clear Current*) = kein Song aktiv.
+`/song/index -1` (or the command *Clear Current*) means no song is active.
 
-**Ports:** Companion HTTP `8080` · Companion OSC-In `8000` · (Resolume/Chataigne wie gehabt).
+**Ports:** companion HTTP `8080` · companion OSC in `8000`.
 
 ---
 
-## 7. Tests
+## Tests
+
 ```bash
-node test/engine.test.js     # 16 Tests: Index-Identität, Reihenfolge, Ausblenden, Position
+node test/engine.test.js     # 16 tests: index identity, order, hiding, position
 ```
-Verifiziert außerdem per End-to-End-Check: eingehende `/song/index`-OSC-Nachrichten setzen
-den aktuellen Song und die Gespielt-Liste korrekt; Drag&Drop ändert die Reihenfolge, aber
-nicht die Index-Nummer.
+
+Covers that the index stays a song's identity across reordering, that disabled songs drop
+out of the active list, and that positions are computed against the active list only.
 
 ---
 
-## 8. Mögliche Erweiterungen
-- Mehrere Beamer-/Tablet-Ansichten gleichzeitig (SSE unterstützt beliebig viele Clients).
-- „Nächster Song"-Vorschau / Countdown.
-- Rückmeldung ans Chataigne-Dashboard (aktueller Songname als Value).
-- Feste Farbschemata / Corporate-Farben pro Show.
-- Optional: direkte Anbindung an Chataignes eigenen Dashboard-WebSocket (Port 9999), falls
-  ihr den Companion später einsparen wollt.
+## Possible extensions
+
+- Several external displays or tablets at once (SSE supports any number of clients).
+- A "next song" preview or countdown.
+- Reporting back into the Chataigne dashboard (current song name as a value).
+- Fixed color schemes per show.
+- Talking to Chataigne's own dashboard WebSocket (port 9999) directly, if you ever want to
+  drop the companion.
+
+---
+
+## License
+
+MIT — see [LICENSE](LICENSE).

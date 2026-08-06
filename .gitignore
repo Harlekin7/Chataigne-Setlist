@@ -1,10 +1,10 @@
-# Die laufende Setlist ist Showdaten und gehoert niemandem ausser dem Betreiber.
-# Fehlt die Datei, startet der Server mit einer neutralen Beispiel-Setlist.
+# The live setlist is show data and belongs to whoever runs the show.
+# Without this file the server starts from a neutral example setlist.
 companion/setlist.json
 
-# Veraltete Einzeldatei-Kopie der Web-App. Sie ist ein Duplikat von
-# companion/public/index.html und driftet zwangslaeufig davon weg.
-# Einzige Quelle der Wahrheit ist companion/public/index.html.
+# Stale single-file copy of the web app. It duplicates
+# companion/public/index.html and inevitably drifts away from it.
+# The single source of truth is companion/public/index.html.
 Dashboard-Demo-standalone.html
 
 node_modules/

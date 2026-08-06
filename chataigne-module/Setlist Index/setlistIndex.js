@@ -1,52 +1,51 @@
 /*
- * Setlist Index — Chataigne Custom Module (schlank)
+ * Setlist Index — Chataigne custom module (slim)
  * ===========================================================================
- * Aufgabe: aus der State Machine die Index-Nummer des AKTUELLEN Songs
- * entgegennehmen und ans Setlist-Dashboard weitermelden.
+ * Its job: take the index number of the CURRENT song from the state machine
+ * and pass it on to the Setlist Dashboard.
  *
- * Das Triggern der Resolume-Clips bleibt bei euren bestehenden Action-States
- * (AND aus Startzeit + Endzeit + "LTC Playing"). Dieses Modul haengt sich nur
- * zusaetzlich als Consequence an jeden State.
+ * Triggering the clips stays with your existing action states. This module
+ * only attaches itself to each state as one extra consequence.
  *
- * VERDRAHTUNG IN DER STATE MACHINE
- *   Consequence-Typ:  Command
- *   Ziel:             Setlist Index  ->  Set Current Song
- *   Parameter Index:  die feste Index-Nummer dieses Songs
+ * WIRING IT UP IN THE STATE MACHINE
+ *   Consequence type: Command
+ *   Target:           Setlist Index  ->  Set Current Song
+ *   Index parameter:  this song's fixed index number
  *
- * Alternativ (falls lieber "Set Value"): den Parameter "Current Index Param"
- * setzen -> wird ebenfalls gemeldet.
+ * Alternatively, if you prefer "Set Value": set the parameter
+ * "Current Index Param" and it will be reported too.
  *
- * AUSGANG (OSC an das Dashboard, Default 127.0.0.1:8000)
- *   /song/index  <int>   aktueller Song-Index (0 / -1 = keiner)
- *   /song/reset  1        "gespielt"-Markierungen zuruecksetzen
+ * OUTPUT (OSC to the dashboard, default 127.0.0.1:8000)
+ *   /song/index  <int>   current song index (0 / -1 = none)
+ *   /song/reset  1       clear the "played" marks
  * ===========================================================================
  */
 
 function init() {
-  script.log("[Setlist Index] bereit. Sendet /song/index an das Dashboard.");
+  script.log("[Setlist Index] ready. Sending /song/index to the dashboard.");
 }
 
-// Command-Consequence aus der State Machine: Set Current Song (Index)
+// Command consequence from the state machine: Set Current Song (Index)
 function setCurrentSong(index) {
   local.values.currentIndex.set(index);
   local.send("/song/index", index);
-  script.log("[Setlist Index] aktueller Song -> " + index);
+  script.log("[Setlist Index] current song -> " + index);
 }
 
-// Optional: aktuellen Song "leeren" (nichts aktiv)
+// Optional: clear the current song (nothing active)
 function clearCurrent() {
   local.values.currentIndex.set(-1);
   local.send("/song/index", -1);
-  script.log("[Setlist Index] Current geleert");
+  script.log("[Setlist Index] current cleared");
 }
 
-// "Gespielt"-Markierungen im Dashboard zuruecksetzen (auch per Chataigne moeglich)
+// Clear the "played" marks in the dashboard (also possible from Chataigne)
 function resetPlayed() {
   local.send("/song/reset", 1);
-  script.log("[Setlist Index] Reset Played gesendet");
+  script.log("[Setlist Index] reset played sent");
 }
 
-// Alternativer Weg: Parameter "Current Index Param" per Set-Value gesetzt
+// Alternative route: parameter "Current Index Param" was set via Set Value
 function moduleParameterChanged(param) {
   if (param.is(local.parameters.currentIndexParam)) {
     setCurrentSong(local.parameters.currentIndexParam.get());

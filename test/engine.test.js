@@ -1,5 +1,5 @@
 'use strict';
-/* Unit-Tests — Aufruf: node test/engine.test.js */
+/* Unit tests — run with: node test/engine.test.js */
 var E = require('../lib/setlist-engine.js');
 var pass = 0, fail = 0;
 function ok(c, m) { if (c) pass++; else { fail++; console.error('  ✗ ' + m); } }
@@ -14,34 +14,34 @@ var raw = {
 };
 var sl = E.normalizeSetlist(raw);
 
-ok(sl.meta.name === 'Test', 'meta.name übernommen');
-ok(sl.songs.length === 3, '3 Songs');
-ok(sl.songs[0].index === 5, 'Index bleibt erhalten (5)');
-ok(sl.songs[1].enabled === false, 'enabled=false bleibt');
-ok(sl.songs[2].enabled === true, 'fehlendes enabled -> default true');
-ok(sl.songs[2].playedColor === '#22c55e', 'fehlende Farbe -> default');
+ok(sl.meta.name === 'Test', 'meta.name carried over');
+ok(sl.songs.length === 3, '3 songs');
+ok(sl.songs[0].index === 5, 'index is preserved (5)');
+ok(sl.songs[1].enabled === false, 'enabled=false stays');
+ok(sl.songs[2].enabled === true, 'missing enabled -> defaults to true');
+ok(sl.songs[2].playedColor === '#22c55e', 'missing color -> default');
 
-// Reihenfolge = Array-Reihenfolge (NICHT nach Index sortiert!)
-ok(sl.songs[0].name === 'A' && sl.songs[1].name === 'B' && sl.songs[2].name === 'C', 'Array-Reihenfolge unangetastet');
+// Order = array order (NOT sorted by index!)
+ok(sl.songs[0].name === 'A' && sl.songs[1].name === 'B' && sl.songs[2].name === 'C', 'array order untouched');
 
-// enabledOrdered blendet deaktivierte aus, behält Reihenfolge
+// enabledOrdered hides disabled songs and keeps the order
 var eo = E.enabledOrdered(sl.songs);
-ok(eo.length === 2 && eo[0].name === 'A' && eo[1].name === 'C', 'deaktivierte ausgeblendet, Reihenfolge erhalten');
+ok(eo.length === 2 && eo[0].name === 'A' && eo[1].name === 'C', 'disabled hidden, order preserved');
 
-// findByIndex nutzt feste Index-Nummer, nicht die Position
+// findByIndex uses the fixed index number, not the position
 ok(E.findByIndex(sl.songs, 9).name === 'C', 'findByIndex(9) -> C');
-ok(E.findByIndex(sl.songs, 2).name === 'B', 'findByIndex(2) -> B (auch wenn deaktiviert)');
-ok(E.findByIndex(sl.songs, 7) === null, 'findByIndex unbekannt -> null');
+ok(E.findByIndex(sl.songs, 2).name === 'B', 'findByIndex(2) -> B (even though disabled)');
+ok(E.findByIndex(sl.songs, 7) === null, 'findByIndex unknown -> null');
 
-// positionOf = 1-basierte Position in der AKTIVEN Liste
+// positionOf = 1-based position within the ACTIVE list
 ok(E.positionOf(sl.songs, 5) === 1, 'positionOf(5)=1');
-ok(E.positionOf(sl.songs, 9) === 2, 'positionOf(9)=2 (B ist deaktiviert, zählt nicht)');
-ok(E.positionOf(sl.songs, 2) === 0, 'positionOf(2)=0 (deaktiviert, nicht in aktiver Liste)');
+ok(E.positionOf(sl.songs, 9) === 2, 'positionOf(9)=2 (B is disabled and does not count)');
+ok(E.positionOf(sl.songs, 2) === 0, 'positionOf(2)=0 (disabled, not in the active list)');
 
-// Umsortieren ändert Position, nicht die Index-Nummer
-var moved = sl.songs.slice(); var it = moved.splice(2, 1)[0]; moved.unshift(it); // C nach vorn
-ok(E.positionOf(moved, 9) === 1, 'nach Drag&Drop: C jetzt Position 1');
-ok(E.findByIndex(moved, 9).index === 9, 'Index von C bleibt 9');
+// Reordering changes the position, not the index number
+var moved = sl.songs.slice(); var it = moved.splice(2, 1)[0]; moved.unshift(it); // move C to the front
+ok(E.positionOf(moved, 9) === 1, 'after drag & drop: C is now position 1');
+ok(E.findByIndex(moved, 9).index === 9, "C's index stays 9");
 
-console.log('\n' + pass + ' Tests bestanden, ' + fail + ' fehlgeschlagen.');
+console.log('\n' + pass + ' tests passed, ' + fail + ' failed.');
 process.exit(fail ? 1 : 0);

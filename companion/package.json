@@ -1,7 +1,7 @@
 {
   "name": "setlist-dashboard-companion",
   "version": "2.0.0",
-  "description": "Companion-Server fuer das Setlist-Dashboard: Setlist-Store, OSC-Bruecke zum Chataigne-Modul 'Setlist Index' und Auslieferung der Web-App. Reines Node, keine Abhaengigkeiten.",
+  "description": "Companion server for the Setlist Dashboard: setlist store, OSC bridge to the Chataigne module 'Setlist Index' and host for the web app. Plain Node, no dependencies.",
   "main": "server.js",
   "scripts": { "start": "node server.js" },
   "engines": { "node": ">=16" },

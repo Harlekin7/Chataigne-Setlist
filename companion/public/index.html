@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -14,8 +14,9 @@
   }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%}
-  /* no-repeat + fixed: sonst kachelt der Gradient (Body-Box ist nur 100vh hoch) und der helle
-     Fleck taucht bei laengeren Seiten ein zweites Mal auf. Grundfarbe deckt den Rest ab. */
+  /* no-repeat + fixed: without it the gradient tiles, because the body box is only 100vh
+     tall, and the bright spot shows up a second time on longer pages. The flat base color
+     covers whatever is left. */
   body{background:var(--bg) radial-gradient(1200px 700px at 80% -10%,#16233b 0%,var(--bg) 55%) no-repeat fixed;
        color:var(--txt);font-family:var(--sans);-webkit-font-smoothing:antialiased;min-height:100vh}
   .wrap{max-width:1000px;width:100%;margin:0 auto;padding:14px 16px 40px}
@@ -59,10 +60,10 @@
   .lrow.current{background:#13233c;border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 10px 34px -12px rgba(59,130,246,.7)}
   .lrow.current .nm{color:#fff!important}
   .lrow.current .num{color:var(--accent2)}
-  /* Das ::after ist ein viertes Grid-Item. Ohne eigene Spalte landet es in einer neuen
-     impliziten Zeile und macht die aktive Zeile doppelt hoch, daher hier 4 Spalten. */
+  /* The ::after is a fourth grid item. Without a column of its own it lands on a new
+     implicit row and makes the active row twice as tall, hence four columns here. */
   .lrow.current{grid-template-columns:40px 1fr auto auto}
-  .lrow.current::after{content:"▶ JETZT";font-family:var(--sans);font-size:11px;font-weight:800;
+  .lrow.current::after{content:"▶ NOW";font-family:var(--sans);font-size:11px;font-weight:800;
         letter-spacing:1px;color:var(--accent2);white-space:nowrap;align-self:center}
 
   .btnrow{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
@@ -102,28 +103,28 @@
   .hidden{display:none!important}
   @media(min-width:640px){ .metaform{grid-template-columns:1fr} }
 
-  /* ---------- Vollbild / Präsentationsmodus ---------- */
+  /* ---------- Fullscreen view ---------- */
   #present{position:fixed;inset:0;background:var(--bg);z-index:1000;display:none;flex-direction:column}
   body.presenting{overflow:hidden}
   body.presenting #present{display:flex}
   #present .pscroll{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
   #present .pscroll::-webkit-scrollbar{display:none}
-  /* 16:9-optimiert: mittig, formatfüllend, genau 7 Songs sichtbar */
+  /* Tuned for 16:9: centered, fills the frame, exactly 7 songs visible */
   .prow{display:flex;align-items:center;justify-content:center;text-align:center;width:100%;
         height:var(--prow-h,14.28vh);padding:0 8vw;gap:.42em;
         font-size:clamp(22px,4.6vh,64px);font-weight:800;line-height:1.25;overflow:hidden;
         color:var(--muted2);opacity:.4;transition:opacity .25s,color .25s,background .25s,font-size .2s}
-  /* overflow:hidden braucht es fuer text-overflow:ellipsis, es clippt aber auch vertikal.
-     padding schafft Luft in der Clip-Box, das negative margin haelt die Layouthoehe gleich -
-     so koennen Ober- und Unterlaengen nie abgeschnitten werden, egal welche Schrift greift. */
+  /* overflow:hidden is needed for text-overflow:ellipsis, but it clips vertically too.
+     The padding creates room inside the clip box and the negative margin keeps the layout
+     height unchanged, so ascenders and descenders can never be cut off, whatever font wins. */
   .prow .pnm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
         padding-block:.18em;margin-block:-.18em}
   .prow.pplayed{opacity:.9}
   .prow.pcurrent{opacity:1;color:#fff;font-size:clamp(30px,5.9vh,88px);
         background:radial-gradient(130% 100% at 50% 50%,rgba(59,130,246,.22),rgba(59,130,246,0) 72%)}
   .prow.pcurrent .pnm{text-transform:uppercase;letter-spacing:.5px}
-  /* Marker als CSS-Dreiecke statt Glyphen: symmetrische Box, daher von align-items:center
-     exakt auf die Zeilenmitte gesetzt - unabhaengig von den Metriken der Schrift. */
+  /* Markers as CSS triangles rather than glyphs: a symmetric box, so align-items:center puts
+     them exactly on the line's centre - independent of the font's metrics. */
   .prow.pcurrent::before,
   .prow.pcurrent::after{content:"";flex:0 0 auto;width:0;height:0;opacity:.9;
         border-top:.26em solid transparent;border-bottom:.26em solid transparent}
@@ -142,19 +143,19 @@
 <div class="wrap">
   <header>
     <div class="brand"><b id="showName">Setlist</b><span>Setlist Dashboard · Chataigne</span></div>
-    <div class="pill off" id="statusPill"><span class="dot"></span><span id="statusTxt">verbinde…</span></div>
+    <div class="pill off" id="statusPill"><span class="dot"></span><span id="statusTxt">connecting…</span></div>
   </header>
 
   <div class="tabs">
     <button id="tabLive" class="active" onclick="setView('live')">▶ LIVE</button>
-    <button id="tabEdit" onclick="setView('edit')">✎ SETLIST BEARBEITEN</button>
+    <button id="tabEdit" onclick="setView('edit')">✎ EDIT SETLIST</button>
   </div>
 
   <!-- LIVE -->
   <section id="viewLive" class="grid">
     <div class="card now">
       <div class="accentbar" id="accentBar"></div>
-      <div class="label">Jetzt läuft</div>
+      <div class="label">Now playing</div>
       <div class="cuename" id="nowName">—</div>
       <div class="pos" id="nowPos"></div>
     </div>
@@ -162,53 +163,53 @@
       <div class="label" style="margin-bottom:10px">Setlist</div>
       <div class="listwrap" id="liveList"></div>
       <div class="btnrow">
-        <button class="btn" onclick="enterPresent()">⛶ Vollbild</button>
-        <button class="btn warn" onclick="resetPlayed()">↺ Gespielt-Markierung zurücksetzen</button>
+        <button class="btn" onclick="enterPresent()">⛶ Fullscreen</button>
+        <button class="btn warn" onclick="resetPlayed()">↺ Reset played marks</button>
       </div>
-      <div class="hint">Der aktive Song wird von Chataigne gesetzt (Consequence „Set Current Song"). Bereits gespielte Songs erscheinen in ihrer definierten Farbe. Tipp: Ein Klick auf einen Song setzt ihn manuell als „jetzt" – praktisch zum Testen ohne Chataigne.</div>
+      <div class="hint">The active song is set by Chataigne (consequence "Set Current Song"). Songs that have already played appear in their configured color. Tip: clicking a song sets it as "now" by hand — handy for testing without Chataigne.</div>
     </div>
   </section>
 
   <!-- EDITOR -->
   <section id="viewEdit" class="grid hidden">
     <div class="card">
-      <div class="metaform"><div><label>Show-Name</label><input id="mName"></div></div>
+      <div class="metaform"><div><label>Show name</label><input id="mName"></div></div>
       <div style="overflow-x:auto">
         <table>
           <thead><tr>
-            <th style="width:28px"></th><th style="width:34px">#</th><th>Song-Name</th>
-            <th style="width:80px">Index</th><th style="width:64px">Aktiv</th>
-            <th style="width:70px">Farbe</th><th style="width:44px"></th>
+            <th style="width:28px"></th><th style="width:34px">#</th><th>Song name</th>
+            <th style="width:80px">Index</th><th style="width:64px">Active</th>
+            <th style="width:70px">Color</th><th style="width:44px"></th>
           </tr></thead>
           <tbody id="editBody"></tbody>
         </table>
       </div>
       <div class="toolbar">
-        <button class="btn" onclick="addSong()">＋ Song hinzufügen</button>
-        <button class="btn go" onclick="save()">💾 Speichern &amp; senden</button>
+        <button class="btn" onclick="addSong()">＋ Add song</button>
+        <button class="btn go" onclick="save()">💾 Save &amp; send</button>
         <button class="btn" onclick="exportJson()">⭳ JSON</button>
         <button class="btn" onclick="document.getElementById('imp').click()">⭱ Import</button>
         <input type="file" id="imp" accept="application/json" class="hidden" onchange="importJson(event)">
       </div>
       <div class="hint" id="saveHint">
-        <b>Index</b> = feste Nummer des Songs (muss mit der Consequence in eurer State Machine übereinstimmen) –
-        ändert sich beim Umsortieren <b>nicht</b>. Die <b>Reihenfolge</b> stellst du per Drag&amp;Drop am Griff
-        (<code>⠿</code>) ein. <b>Aktiv</b>-Schalter aus = Song wird im Live-Dashboard ausgeblendet.
-        <b>Farbe</b> = Textfarbe, sobald der Song gespielt wurde.
+        <b>Index</b> = the song's fixed number, and it must match the consequence in your state machine.
+        Reordering does <b>not</b> change it. Set the <b>display order</b> by dragging the handle
+        (<code>⠿</code>). <b>Active</b> switched off = the song is hidden from the live dashboard.
+        <b>Color</b> = text color once the song has played.
       </div>
     </div>
   </section>
 </div>
 
-<!-- Vollbild / Präsentationsmodus -->
+<!-- Fullscreen view -->
 <div id="present">
-  <button class="exitfs" title="Vollbild verlassen (Esc)" onclick="exitPresent()">✕</button>
+  <button class="exitfs" title="Exit fullscreen (Esc)" onclick="exitPresent()">✕</button>
   <div class="pscroll" id="presentScroll"></div>
-  <div class="fshint">Vollbild verlassen: Esc · oben rechts ✕</div>
+  <div class="fshint">Exit fullscreen: Esc · ✕ top right</div>
 </div>
 
 <script>
-/* ---------- Helfer (inline, identisch zu lib/setlist-engine.js) ---------- */
+/* ---------- Helpers (inline, identical to lib/setlist-engine.js) ---------- */
 function enabledOrdered(songs){return (songs||[]).filter(function(s){return s.enabled!==false;});}
 function findByIndex(songs,idx){for(var i=0;i<(songs||[]).length;i++)if(songs[i].index===idx)return songs[i];return null;}
 function positionOf(songs,idx){var l=enabledOrdered(songs);for(var i=0;i<l.length;i++)if(l[i].index===idx)return i+1;return 0;}
@@ -218,10 +219,10 @@ var DEMO={meta:{name:'Demo Show 2026'},songs:[
   {index:1,name:'Intro',enabled:true,playedColor:'#22c55e'},
   {index:2,name:'Song 1 – Opener',enabled:true,playedColor:'#22c55e'},
   {index:3,name:'Song 2',enabled:true,playedColor:'#22c55e'},
-  {index:4,name:'Ballade',enabled:true,playedColor:'#a855f7'},
-  {index:5,name:'Soundcheck-Filler',enabled:false,playedColor:'#64748b'},
+  {index:4,name:'Ballad',enabled:true,playedColor:'#a855f7'},
+  {index:5,name:'Soundcheck filler',enabled:false,playedColor:'#64748b'},
   {index:6,name:'Song 4 – Uptempo',enabled:true,playedColor:'#eab308'},
-  {index:7,name:'Zugabe',enabled:true,playedColor:'#f97316'}
+  {index:7,name:'Encore',enabled:true,playedColor:'#f97316'}
 ]};
 var data=null, currentIndex=-1, played={}, mode='demo', view='live', dirty=false, serverAvailable=false;
 
@@ -229,7 +230,7 @@ var data=null, currentIndex=-1, played={}, mode='demo', view='live', dirty=false
 function boot(){
   fetch('/api/state',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json();})
     .then(function(s){ serverAvailable=true; mode='live'; applySnapshot(s); connectSSE(); afterData(); })
-    .catch(function(){ data=JSON.parse(JSON.stringify(DEMO)); mode='demo'; setStatus('demo','DEMO-MODUS'); afterData(); });
+    .catch(function(){ data=JSON.parse(JSON.stringify(DEMO)); mode='demo'; setStatus('demo','DEMO MODE'); afterData(); });
 }
 function afterData(){ fillEditor(); renderLive(); }
 function applySnapshot(s){
@@ -240,8 +241,8 @@ function applySnapshot(s){
 }
 function connectSSE(){
   try{ var es=new EventSource('/api/events');
-    es.addEventListener('state',function(ev){ applySnapshot(JSON.parse(ev.data)); setStatus('live','LIVE · verbunden'); });
-    es.onerror=function(){ setStatus('off','Server getrennt'); };
+    es.addEventListener('state',function(ev){ applySnapshot(JSON.parse(ev.data)); setStatus('live','LIVE · connected'); });
+    es.onerror=function(){ setStatus('off','Server disconnected'); };
   }catch(e){}
 }
 function setStatus(cls,txt){var p=document.getElementById('statusPill');p.className='pill '+cls;document.getElementById('statusTxt').textContent=txt;}
@@ -251,7 +252,7 @@ function renderLive(){
   if(!data)return;
   document.getElementById('showName').textContent=(data.meta&&data.meta.name)||'Setlist';
   var cur=findByIndex(data.songs,currentIndex);
-  document.getElementById('nowName').textContent=cur?cur.name:'— kein Song aktiv —';
+  document.getElementById('nowName').textContent=cur?cur.name:'— no song active —';
   var pos=positionOf(data.songs,currentIndex), total=enabledOrdered(data.songs).length;
   document.getElementById('nowPos').textContent=cur?('Song '+pos+' / '+total):'';
   document.getElementById('accentBar').style.background=cur?'var(--accent)':'#334';
@@ -274,23 +275,23 @@ function renderLive(){
 }
 var lastScrolledIndex=-99;
 
-/* ---------- Vollbild / Präsentationsmodus ---------- */
+/* ---------- Fullscreen view ---------- */
 var presenting=false, lastPresentIndex=-99, uiTimer=null;
 var presentSig='';
-var VISIBLE=7, CENTER_ROW=4;   // 7 Songs sichtbar, aktueller = 4. Zeile (= Mitte)
+var VISIBLE=7, CENTER_ROW=4;   // 7 songs visible, the current one on row 4 (= the middle)
 function presentSignature(list){ return list.map(function(s){return s.index+'§'+s.name+'§'+s.playedColor;}).join('|'); }
 function renderPresent(){
   var sc=document.getElementById('presentScroll'); if(!sc)return;
   var list=enabledOrdered(data.songs);
-  // DOM nur neu aufbauen, wenn sich die Setlist wirklich geändert hat (sonst flackert/springt der Scroll)
+  // Only rebuild the DOM when the setlist really changed, otherwise the scroll flickers and jumps
   var sig=presentSignature(list);
   if(sig!==presentSig){
     presentSig=sig; sc.innerHTML='';
     list.forEach(function(s){ var row=document.createElement('div'); row.className='prow'; row.dataset.idx=s.index;
       row.innerHTML='<div class="pnm">'+esc(s.name)+'</div>'; sc.appendChild(row); });
-    lastPresentIndex=-99;   // nach Rebuild neu positionieren
+    lastPresentIndex=-99;   // reposition after a rebuild
   }
-  // Zustände (aktuell / gespielt / Farbe) in-place aktualisieren
+  // Update the states (current / played / color) in place
   var rows=sc.children, curPos=-1, curEl=null;
   for(var i=0;i<rows.length;i++){
     var s=list[i], row=rows[i];
@@ -300,34 +301,34 @@ function renderPresent(){
     row.style.color=(isPlayed&&!isCur)?s.playedColor:'';
     if(isCur){ curPos=i; curEl=row; }
   }
-  // Scrollen: aktueller Song in die 4. Zeile; Anfang bleibt oben, Ende bleibt unten (geclamped)
+  // Scrolling: current song onto row 4; the start stays at the top, the end at the bottom (clamped)
   if(presenting && curEl && lastPresentIndex!==currentIndex){
     var rowH=curEl.getBoundingClientRect().height || (sc.clientHeight/VISIBLE);
-    var target=(curPos-(CENTER_ROW-1))*rowH;                 // 3 Zeilen über dem aktuellen sichtbar
+    var target=(curPos-(CENTER_ROW-1))*rowH;                 // keeps 3 rows visible above the current one
     var maxS=Math.max(0, sc.scrollHeight-sc.clientHeight);
     target=Math.max(0, Math.min(target, maxS));
     sc.scrollTo({top:target, behavior:'smooth'});
   }
   lastPresentIndex=currentIndex;
 }
-function sizeRows(){   // genau 7 Songs sichtbar: Zeilenhöhe = Bildhöhe / 7
+function sizeRows(){   // exactly 7 songs visible: row height = viewport height / 7
   var sc=document.getElementById('presentScroll'); if(!sc)return;
   var h=sc.clientHeight; if(h>0) document.documentElement.style.setProperty('--prow-h',(h/7)+'px');
 }
 function enterPresent(){
   presenting=true; document.body.classList.add('presenting'); lastPresentIndex=-99;
   sizeRows(); renderPresent();
-  // echtes Browser-Vollbild versuchen (best effort – im Vorschau-Frame ggf. blockiert)
+  // Try real browser fullscreen (best effort - may be blocked inside a preview frame)
   var el=document.documentElement;
   if(el.requestFullscreen){ el.requestFullscreen().catch(function(){}); }
-  setTimeout(function(){ sizeRows(); lastPresentIndex=-99; renderPresent(); }, 250); // nach FS-Übergang neu messen
+  setTimeout(function(){ sizeRows(); lastPresentIndex=-99; renderPresent(); }, 250); // re-measure after the FS transition
   flashUI();
 }
 function exitPresent(){
   presenting=false; document.body.classList.remove('presenting');
   if(document.fullscreenElement && document.exitFullscreen){ document.exitFullscreen().catch(function(){}); }
 }
-function flashUI(){   // Exit-Button + Hinweis kurz einblenden, dann ausblenden
+function flashUI(){   // briefly show the exit button and the hint, then fade them out
   var p=document.getElementById('present'); if(!p)return; p.classList.add('showui');
   clearTimeout(uiTimer); uiTimer=setTimeout(function(){ p.classList.remove('showui'); }, 2800);
 }
@@ -335,7 +336,7 @@ document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&presenting
 document.addEventListener('mousemove',function(){ if(presenting)flashUI(); });
 document.addEventListener('touchstart',function(){ if(presenting)flashUI(); },{passive:true});
 document.addEventListener('fullscreenchange',function(){
-  // wenn der User das native Vollbild verlässt (Esc/Geste), auch Overlay schließen
+  // if the user leaves native fullscreen (Esc/gesture), close the overlay as well
   if(!document.fullscreenElement && presenting) exitPresent();
   else if(presenting){ setTimeout(function(){ sizeRows(); lastPresentIndex=-99; renderPresent(); }, 120); }
 });
@@ -351,13 +352,13 @@ function fillEditor(){
 function songRow(s,i){
   var tr=document.createElement('tr'); tr.dataset.i=i; if(s.enabled===false)tr.classList.add('disabled');
   tr.innerHTML=
-    '<td><div class="handle" draggable="true" title="Ziehen zum Sortieren">⠿</div></td>'+
+    '<td><div class="handle" draggable="true" title="Drag to reorder">⠿</div></td>'+
     '<td style="color:var(--muted2);font-family:var(--mono);font-size:12px">'+(i+1)+'</td>'+
     '<td><input value="'+esc(s.name||'')+'" oninput="upd('+i+',\'name\',this.value)"></td>'+
     '<td><input class="idxin" type="number" min="0" value="'+(s.index)+'" oninput="upd('+i+',\'index\',this.value)"></td>'+
     '<td style="text-align:center"><label class="sw"><input type="checkbox" '+(s.enabled!==false?'checked':'')+' onchange="upd('+i+',\'enabled\',this.checked)"><span></span></label></td>'+
     '<td><input type="color" value="'+(s.playedColor||'#22c55e')+'" oninput="upd('+i+',\'playedColor\',this.value)"></td>'+
-    '<td><button class="iconbtn" title="löschen" onclick="delSong('+i+')">✕</button></td>';
+    '<td><button class="iconbtn" title="delete" onclick="delSong('+i+')">✕</button></td>';
   var h=tr.querySelector('.handle');
   h.addEventListener('dragstart',function(e){ dragFrom=i; e.dataTransfer.effectAllowed='move'; try{e.dataTransfer.setData('text/plain',String(i));}catch(_){} });
   tr.addEventListener('dragover',function(e){ e.preventDefault(); tr.classList.add('dragover'); });
@@ -371,23 +372,23 @@ function upd(i,k,v){ if(k==='index')v=parseInt(v,10)||0; data.songs[i][k]=v; dir
   if(k==='enabled'){ document.getElementById('editBody').children[i].classList.toggle('disabled',!v); }
   renderLive(); }
 function addSong(){ var mx=0; data.songs.forEach(function(s){if(s.index>mx)mx=s.index;});
-  data.songs.push({index:mx+1,name:'Neuer Song',enabled:true,playedColor:'#22c55e'}); dirty=true; fillEditor(); renderLive(); }
+  data.songs.push({index:mx+1,name:'New song',enabled:true,playedColor:'#22c55e'}); dirty=true; fillEditor(); renderLive(); }
 function delSong(i){ data.songs.splice(i,1); dirty=true; fillEditor(); renderLive(); }
 function readMeta(){ data.meta=data.meta||{}; data.meta.name=document.getElementById('mName').value; }
 
 function save(){ readMeta(); var hint=document.getElementById('saveHint');
   if(serverAvailable){
     fetch('/api/setlist',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
-      .then(function(r){return r.json();}).then(function(res){ dirty=false; hint.innerHTML='✅ Gespeichert &amp; gesendet ('+res.songs+' Songs).'; })
-      .catch(function(){ hint.textContent='⚠ Speichern fehlgeschlagen.'; });
-  } else { dirty=false; hint.innerHTML='ℹ️ Demo-Modus: nur lokal geändert. Nutze „JSON" zum Sichern.'; }
+      .then(function(r){return r.json();}).then(function(res){ dirty=false; hint.innerHTML='✅ Saved &amp; sent ('+res.songs+' songs).'; })
+      .catch(function(){ hint.textContent='⚠ Saving failed.'; });
+  } else { dirty=false; hint.innerHTML='ℹ️ Demo mode: changed locally only. Use "JSON" to keep a copy.'; }
 }
 function exportJson(){ readMeta(); var b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   var a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='setlist.json'; a.click(); }
 function importJson(ev){ var f=ev.target.files[0]; if(!f)return; var r=new FileReader();
-  r.onload=function(){ try{ data=JSON.parse(r.result); dirty=true; fillEditor(); renderLive(); }catch(e){alert('Ungültige JSON-Datei');} }; r.readAsText(f); }
+  r.onload=function(){ try{ data=JSON.parse(r.result); dirty=true; fillEditor(); renderLive(); }catch(e){alert('Invalid JSON file');} }; r.readAsText(f); }
 
-/* ---------- Aktionen ---------- */
+/* ---------- Actions ---------- */
 function setCurrent(idx){
   if(serverAvailable){ fetch('/api/current',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({index:idx})}).catch(function(){}); }
   else { currentIndex=idx; if(findByIndex(data.songs,idx))played[idx]=true; renderLive(); }

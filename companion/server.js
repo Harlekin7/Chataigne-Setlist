@@ -1,21 +1,21 @@
 /*
- * Companion-Server — Setlist-Store + Live-Bridge + Dashboard-Auslieferung
+ * Companion server - setlist store, live bridge and dashboard host
  * ===========================================================================
- * Reines Node (keine npm-Abhaengigkeiten).
+ * Plain Node, no npm dependencies.
  *
- * Rolle:
- *   - liefert die Web-App aus (Editor + Live-Dashboard, public/index.html)
- *   - speichert die Setlist (setlist.json) als Single Source of Truth
- *   - empfaengt vom Chataigne-Modul "Setlist Index" per OSC:
- *        /song/index <int>   -> aktueller Song  (markiert ihn zusaetzlich als "gespielt")
- *        /song/reset  1      -> "gespielt"-Markierungen zuruecksetzen
- *   - schiebt den Live-Zustand per SSE ins Dashboard
+ * Its job:
+ *   - serves the web app (editor + live dashboard, public/index.html)
+ *   - stores the setlist (setlist.json) as the single source of truth
+ *   - receives OSC from the Chataigne module "Setlist Index":
+ *        /song/index <int>   -> current song  (also marks it as played)
+ *        /song/reset  1      -> clear the played marks
+ *   - pushes live state into the dashboard via SSE
  *
- * Das Triggern der Resolume-Clips passiert weiterhin komplett in Chataigne.
+ * Triggering the Resolume clips stays entirely inside Chataigne.
  *
- * Umgebungsvariablen (optional):
- *   HTTP_PORT     (Default 8080)   Web-Dashboard
- *   OSC_IN_PORT   (Default 8000)   OSC-Eingang vom Chataigne-Modul
+ * Environment variables (optional):
+ *   HTTP_PORT     (default 8080)   web dashboard
+ *   OSC_IN_PORT   (default 8000)   OSC input from the Chataigne module
  * ===========================================================================
  */
 'use strict';
@@ -35,21 +35,21 @@ var SETLIST_PATH = path.join(__dirname, 'setlist.json');
 var PUBLIC_DIR = path.join(__dirname, 'public');
 
 var DEFAULT_SETLIST = {
-  meta: { name: 'Neue Show' },
+  meta: { name: 'New show' },
   songs: [
     { index: 1, name: 'Intro',            enabled: true, playedColor: '#22c55e' },
     { index: 2, name: 'Song 1 – Opener',  enabled: true, playedColor: '#22c55e' },
     { index: 3, name: 'Song 2',           enabled: true, playedColor: '#22c55e' },
-    { index: 4, name: 'Ballade',          enabled: true, playedColor: '#a855f7' },
+    { index: 4, name: 'Ballad',           enabled: true, playedColor: '#a855f7' },
     { index: 5, name: 'Song 4 – Uptempo', enabled: true, playedColor: '#22c55e' },
-    { index: 6, name: 'Zugabe',           enabled: true, playedColor: '#f97316' }
+    { index: 6, name: 'Encore',           enabled: true, playedColor: '#f97316' }
   ]
 };
 
 function loadSetlist() {
   try {
     if (fs.existsSync(SETLIST_PATH)) return E.normalizeSetlist(JSON.parse(fs.readFileSync(SETLIST_PATH, 'utf8')));
-  } catch (e) { console.error('Setlist laden fehlgeschlagen:', e.message); }
+  } catch (e) { console.error('Loading the setlist failed:', e.message); }
   return E.normalizeSetlist(DEFAULT_SETLIST);
 }
 function saveSetlist(data) { fs.writeFileSync(SETLIST_PATH, JSON.stringify(data, null, 2), 'utf8'); }
@@ -59,7 +59,7 @@ var currentIndex = -1;
 var played = {};                       // { index: true }
 
 // ---------------------------------------------------------------------------
-// OSC-Decoder (nur was wir brauchen)
+// OSC decoder (only what we need)
 // ---------------------------------------------------------------------------
 function oscDecode(buf) {
   function readStr(off) {
@@ -95,16 +95,16 @@ oscIn.on('message', function (msg) {
 });
 oscIn.on('error', function (e) {
   if (e.code === 'EADDRINUSE') {
-    console.error('WARNUNG: OSC-Port ' + CFG.oscInPort + ' ist von einem anderen Programm belegt.');
-    console.error('         Das Dashboard laeuft weiter, empfaengt aber KEINE Daten aus Chataigne.');
+    console.error('WARNING: OSC port ' + CFG.oscInPort + ' is taken by another program.');
+    console.error('         The dashboard keeps running but receives NO data from Chataigne.');
     return;
   }
-  console.error('OSC-In Fehler:', e.message);
+  console.error('OSC input error:', e.message);
 });
 try { oscIn.bind(CFG.oscInPort); } catch (e) {}
 
 // ---------------------------------------------------------------------------
-// SSE Live-Feed
+// SSE live feed
 // ---------------------------------------------------------------------------
 var sseClients = [];
 function snapshot() {
@@ -123,7 +123,7 @@ function broadcastState() {
     try { sseClients[i].write(line); } catch (e) { sseClients.splice(i, 1); }
   }
 }
-setInterval(function () {   // Heartbeat, haelt Verbindung + synct spaete Clients
+setInterval(function () {   // heartbeat, keeps the connection alive and syncs late clients
   var line = ': ping\n\n';
   for (var i = sseClients.length - 1; i >= 0; i--) { try { sseClients[i].write(line); } catch (e) { sseClients.splice(i, 1); } }
 }, 15000);
@@ -157,19 +157,19 @@ var server = http.createServer(function (req, res) {
 
   if (p === '/api/setlist' && req.method === 'POST') {
     return readBody(req, function (data) {
-      if (!data || !data.songs) return sendJSON(res, 400, { error: 'ungueltige Setlist' });
+      if (!data || !data.songs) return sendJSON(res, 400, { error: 'invalid setlist' });
       setlist = E.normalizeSetlist(data);
       saveSetlist(setlist);
       broadcastState();
       sendJSON(res, 200, { ok: true, songs: setlist.songs.length });
     });
   }
-  if (p === '/api/current' && req.method === 'POST') {      // manuelles Setzen / Test
+  if (p === '/api/current' && req.method === 'POST') {      // set by hand / for testing
     return readBody(req, function (data) { setCurrent(parseInt(data && data.index, 10)); sendJSON(res, 200, { ok: true }); });
   }
   if (p === '/api/reset' && req.method === 'POST') { resetPlayed(); return sendJSON(res, 200, { ok: true }); }
 
-  // statische Dateien
+  // static files
   var file = (p === '/' ? '/index.html' : p);
   var full = path.join(PUBLIC_DIR, path.normalize(file).replace(/^(\.\.[\/\\])+/, ''));
   fs.readFile(full, function (err, buf) {
@@ -181,9 +181,9 @@ var server = http.createServer(function (req, res) {
 
 server.on('error', function (e) {
   if (e.code === 'EADDRINUSE') {
-    console.error('FEHLER: HTTP-Port ' + CFG.httpPort + ' ist belegt.');
-    console.error('        Laeuft der Companion schon in einem anderen Fenster?');
-    console.error('        Anderer Port:  set HTTP_PORT=8081  und dann neu starten.');
+    console.error('ERROR: HTTP port ' + CFG.httpPort + ' is already in use.');
+    console.error('       Is the companion already running in another window?');
+    console.error('       Another port:  set HTTP_PORT=8081  and start again.');
     process.exit(1);
   }
   throw e;
@@ -193,8 +193,8 @@ server.listen(CFG.httpPort, function () {
   console.log('==================================================');
   console.log(' Setlist Dashboard — Companion');
   console.log('  Dashboard:      http://localhost:' + CFG.httpPort);
-  console.log('  OSC-In (Chataigne -> hier): Port ' + CFG.oscInPort);
+  console.log('  OSC in (Chataigne -> here): port ' + CFG.oscInPort);
   console.log('    /song/index <int>   /song/reset 1');
-  console.log('  Songs geladen:  ' + setlist.songs.length);
+  console.log('  Songs loaded:   ' + setlist.songs.length);
   console.log('==================================================');
 });

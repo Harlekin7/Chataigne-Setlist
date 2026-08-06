@@ -3,7 +3,7 @@
   "type": "OSC",
   "path": "Custom",
   "version": "1.0.0",
-  "description": "Schlanke Bruecke: nimmt aus der State Machine per Consequence 'Set Current Song (Index)' die Index-Nummer des aktuellen Songs entgegen und meldet sie an das Setlist-Dashboard (per OSC /song/index N). Das Triggern der Resolume-Clips bleibt bei euren bestehenden Action-States.",
+  "description": "Slim bridge: takes the index number of the current song from the state machine via the consequence 'Set Current Song (Index)' and reports it to the Setlist Dashboard (as OSC /song/index N). Triggering the clips stays with your existing action states.",
   "url": "https://github.com/Harlekin7/Chataigne-Setlist",
   "downloadURL": "https://github.com/Harlekin7/Chataigne-Setlist",
   "hasInput": false,
@@ -34,7 +34,7 @@
       "type": "Integer",
       "default": 0,
       "min": 0,
-      "description": "Alternativer Weg: statt des Commands kann die State Machine per 'Set Value' diesen Parameter setzen. Aenderungen werden ebenfalls ans Dashboard gemeldet."
+      "description": "Alternative route: instead of the command, the state machine can set this parameter with 'Set Value'. Changes are reported to the dashboard as well."
     }
   },
 
@@ -48,7 +48,7 @@
       "callback": "setCurrentSong",
       "parameters": {
         "Index": { "type": "Integer", "default": 1, "min": 0,
-          "description": "Feste Index-Nummer dieses Songs (muss mit der Setlist im Dashboard uebereinstimmen)." }
+          "description": "This song's fixed index number. It must match the setlist in the dashboard." }
       }
     },
     "Clear Current": {
