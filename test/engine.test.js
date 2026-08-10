@@ -43,5 +43,31 @@ var moved = sl.songs.slice(); var it = moved.splice(2, 1)[0]; moved.unshift(it);
 ok(E.positionOf(moved, 9) === 1, 'after drag & drop: C is now position 1');
 ok(E.findByIndex(moved, 9).index === 9, "C's index stays 9");
 
+// --- resolveNextSlot: the same index used as a repeat advances cleanly ---
+// Active list (all enabled); index 5 occurs TWICE (slot 2 in the set, slot 5 in the encore):
+var L = [
+  { index: 1, name: 'Intro' },     // slot 0
+  { index: 2, name: 'Opener' },    // slot 1
+  { index: 5, name: 'Hit' },       // slot 2  (Hit in the main set)
+  { index: 3, name: 'Ballad' },    // slot 3
+  { index: 4, name: 'Uptempo' },   // slot 4
+  { index: 5, name: 'Hit (Encore)' } // slot 5  (same index 5!)
+];
+var playedS = [];
+function fire(idx, cur) { var s = E.resolveNextSlot(L, idx, cur, playedS); if (s >= 0 && playedS.indexOf(s) < 0) playedS.push(s); return s; }
+
+var c = -1;
+c = fire(1, c); ok(c === 0, 'index 1 -> slot 0');
+c = fire(2, c); ok(c === 1, 'index 2 -> slot 1');
+c = fire(5, c); ok(c === 2, 'index 5 (first time) -> slot 2 (main set)');
+c = fire(3, c); ok(c === 3, 'index 3 -> slot 3');
+c = fire(4, c); ok(c === 4, 'index 4 -> slot 4');
+c = fire(5, c); ok(c === 5, 'index 5 (repeat) -> slot 5 (encore), NOT back to slot 2');
+// both slots with index 5 are now played -> firing again stays on the last row
+c = fire(5, c); ok(c === 5, 'index 5 again (all played) -> stays on slot 5');
+
+// unknown index -> -1 (no forced change)
+ok(E.resolveNextSlot(L, 99, 3, []) === -1, 'unknown index -> -1');
+
 console.log('\n' + pass + ' tests passed, ' + fail + ' failed.');
 process.exit(fail ? 1 : 0);

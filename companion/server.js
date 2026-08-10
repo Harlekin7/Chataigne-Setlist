@@ -55,8 +55,9 @@ function loadSetlist() {
 function saveSetlist(data) { fs.writeFileSync(SETLIST_PATH, JSON.stringify(data, null, 2), 'utf8'); }
 
 var setlist = loadSetlist();
-var currentIndex = -1;
-var played = {};                       // { index: true }
+var currentSlot = -1;                  // row (position in the active list), NOT the index
+var playedSlots = [];                  // played rows (positions)
+function enabledList() { return E.enabledOrdered(setlist.songs); }
 
 // ---------------------------------------------------------------------------
 // OSC decoder (only what we need)
@@ -80,17 +81,25 @@ function oscDecode(buf) {
   } catch (e) { return null; }
 }
 
-function setCurrent(idx) {
-  currentIndex = idx;
-  if (idx >= 0 && E.findByIndex(setlist.songs, idx)) played[idx] = true;
+// The Chataigne module sends ONLY the index -> resolve the matching row (repeats advance)
+function setCurrentByIndex(idx) {
+  if (idx < 0) { currentSlot = -1; broadcastState(); return; }   // clear current
+  var slot = E.resolveNextSlot(enabledList(), idx, currentSlot, playedSlots);
+  if (slot >= 0) { currentSlot = slot; if (playedSlots.indexOf(slot) < 0) playedSlots.push(slot); }
   broadcastState();
 }
-function resetPlayed() { played = {}; broadcastState(); }
+// Manual/click in the dashboard: set an exact row
+function setCurrentBySlot(slot) {
+  var list = enabledList();
+  if (slot >= 0 && slot < list.length) { currentSlot = slot; if (playedSlots.indexOf(slot) < 0) playedSlots.push(slot); }
+  broadcastState();
+}
+function resetPlayed() { playedSlots = []; broadcastState(); }
 
 var oscIn = dgram.createSocket('udp4');
 oscIn.on('message', function (msg) {
   var m = oscDecode(msg); if (!m) return;
-  if (m.address === '/song/index') setCurrent(parseInt(m.args[0], 10));
+  if (m.address === '/song/index') setCurrentByIndex(parseInt(m.args[0], 10));
   else if (m.address === '/song/reset') resetPlayed();
 });
 oscIn.on('error', function (e) {
@@ -108,13 +117,15 @@ try { oscIn.bind(CFG.oscInPort); } catch (e) {}
 // ---------------------------------------------------------------------------
 var sseClients = [];
 function snapshot() {
+  var list = enabledList();
   return {
     meta: setlist.meta,
     songs: setlist.songs,
-    currentIndex: currentIndex,
-    played: Object.keys(played).map(Number),
-    position: E.positionOf(setlist.songs, currentIndex),
-    total: E.enabledOrdered(setlist.songs).length
+    currentSlot: currentSlot,
+    playedSlots: playedSlots.slice(),
+    currentName: (currentSlot >= 0 && list[currentSlot]) ? list[currentSlot].name : null,
+    position: currentSlot >= 0 ? currentSlot + 1 : 0,
+    total: list.length
   };
 }
 function broadcastState() {
@@ -165,7 +176,11 @@ var server = http.createServer(function (req, res) {
     });
   }
   if (p === '/api/current' && req.method === 'POST') {      // set by hand / for testing
-    return readBody(req, function (data) { setCurrent(parseInt(data && data.index, 10)); sendJSON(res, 200, { ok: true }); });
+    return readBody(req, function (data) {
+      if (data && data.slot != null) setCurrentBySlot(parseInt(data.slot, 10));  // click: exact row
+      else setCurrentByIndex(parseInt(data && data.index, 10));                  // like Chataigne: by index
+      sendJSON(res, 200, { ok: true });
+    });
   }
   if (p === '/api/reset' && req.method === 'POST') { resetPlayed(); return sendJSON(res, 200, { ok: true }); }
 

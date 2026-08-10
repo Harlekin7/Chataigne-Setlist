@@ -180,13 +180,18 @@ colors the played ones and hides the disabled ones.
 - **enabled** — `false` hides the song from the live dashboard entirely.
 - **playedColor** — text color once the song has been "now".
 
+A song may appear **more than once with the same index** (e.g. a hit played again as an
+encore). Chataigne still only reports the index, and the dashboard advances the highlight to
+the **next** row with that index instead of jumping back to the first — each row keeps its own
+"played" state.
+
 ---
 
 ## OSC reference (Chataigne → companion, port 8000)
 
 | Address        | Argument | Effect                                              |
 |----------------|----------|-----------------------------------------------------|
-| `/song/index`  | `int`    | current song (this index); also marks it as played  |
+| `/song/index`  | `int`    | current song (this index); advances through repeats and marks the row as played |
 | `/song/reset`  | `1`      | clear the "played" marks                            |
 
 `/song/index -1` (or the command *Clear Current*) means no song is active.
@@ -198,11 +203,12 @@ colors the played ones and hides the disabled ones.
 ## Tests
 
 ```bash
-node test/engine.test.js     # 16 tests: index identity, order, hiding, position
+node test/engine.test.js     # 24 tests: index identity, order, hiding, position, repeats
 ```
 
 Covers that the index stays a song's identity across reordering, that disabled songs drop
-out of the active list, and that positions are computed against the active list only.
+out of the active list, that positions are computed against the active list only, and that a
+repeated index resolves to the next matching row (`resolveNextSlot`) rather than jumping back.
 
 ---
 

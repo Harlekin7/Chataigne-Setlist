@@ -224,7 +224,7 @@ var DEMO={meta:{name:'Demo Show 2026'},songs:[
   {index:6,name:'Song 4 – Uptempo',enabled:true,playedColor:'#eab308'},
   {index:7,name:'Encore',enabled:true,playedColor:'#f97316'}
 ]};
-var data=null, currentIndex=-1, played={}, mode='demo', view='live', dirty=false, serverAvailable=false;
+var data=null, curSlot=-1, playedSlots=[], mode='demo', view='live', dirty=false, serverAvailable=false;
 
 /* ---------- Boot ---------- */
 function boot(){
@@ -235,7 +235,7 @@ function boot(){
 function afterData(){ fillEditor(); renderLive(); }
 function applySnapshot(s){
   if(!dirty){ data={meta:s.meta,songs:s.songs}; }
-  currentIndex=s.currentIndex; played={}; (s.played||[]).forEach(function(i){played[i]=true;});
+  curSlot=(s.currentSlot!=null)?s.currentSlot:-1; playedSlots=s.playedSlots||[];
   document.getElementById('showName').textContent=(data.meta&&data.meta.name)||'Setlist';
   renderLive(); if(!dirty) fillEditor();
 }
@@ -251,32 +251,32 @@ function setStatus(cls,txt){var p=document.getElementById('statusPill');p.classN
 function renderLive(){
   if(!data)return;
   document.getElementById('showName').textContent=(data.meta&&data.meta.name)||'Setlist';
-  var cur=findByIndex(data.songs,currentIndex);
+  var list=enabledOrdered(data.songs), total=list.length;
+  var cur=(curSlot>=0 && curSlot<list.length)?list[curSlot]:null;
   document.getElementById('nowName').textContent=cur?cur.name:'— no song active —';
-  var pos=positionOf(data.songs,currentIndex), total=enabledOrdered(data.songs).length;
-  document.getElementById('nowPos').textContent=cur?('Song '+pos+' / '+total):'';
+  document.getElementById('nowPos').textContent=cur?('Song '+(curSlot+1)+' / '+total):'';
   document.getElementById('accentBar').style.background=cur?'var(--accent)':'#334';
 
   var box=document.getElementById('liveList'); box.innerHTML='';
-  var list=enabledOrdered(data.songs), activeEl=null;
+  var activeEl=null;
   list.forEach(function(s,i){
     var row=document.createElement('div'); row.className='lrow';
-    var isCur=s.index===currentIndex, isPlayed=!!played[s.index];
+    var isCur=(i===curSlot), isPlayed=(playedSlots.indexOf(i)>=0);
     if(isCur)row.classList.add('current');
     if(isPlayed&&!isCur){ row.classList.add('played'); row.style.color=s.playedColor; }
     row.innerHTML='<div class="num">'+(i+1)+'</div><div class="nm">'+esc(s.name)+'</div>'+
                   '<div class="badge">#'+s.index+'</div>';
-    row.onclick=function(){ setCurrent(s.index); };
+    row.onclick=function(){ setCurrentSlot(i); };
     box.appendChild(row); if(isCur)activeEl=row;
   });
-  if(activeEl && lastScrolledIndex!==currentIndex){ activeEl.scrollIntoView({block:'center',behavior:'smooth'}); }
-  lastScrolledIndex=currentIndex;
+  if(activeEl && lastScrolledSlot!==curSlot){ activeEl.scrollIntoView({block:'center',behavior:'smooth'}); }
+  lastScrolledSlot=curSlot;
   renderPresent();
 }
-var lastScrolledIndex=-99;
+var lastScrolledSlot=-99;
 
 /* ---------- Fullscreen view ---------- */
-var presenting=false, lastPresentIndex=-99, uiTimer=null;
+var presenting=false, lastPresentSlot=-99, uiTimer=null;
 var presentSig='';
 var VISIBLE=7, CENTER_ROW=4;   // 7 songs visible, the current one on row 4 (= the middle)
 function presentSignature(list){ return list.map(function(s){return s.index+'§'+s.name+'§'+s.playedColor;}).join('|'); }
@@ -289,39 +289,39 @@ function renderPresent(){
     presentSig=sig; sc.innerHTML='';
     list.forEach(function(s){ var row=document.createElement('div'); row.className='prow'; row.dataset.idx=s.index;
       row.innerHTML='<div class="pnm">'+esc(s.name)+'</div>'; sc.appendChild(row); });
-    lastPresentIndex=-99;   // reposition after a rebuild
+    lastPresentSlot=-99;   // reposition after a rebuild
   }
   // Update the states (current / played / color) in place
   var rows=sc.children, curPos=-1, curEl=null;
   for(var i=0;i<rows.length;i++){
     var s=list[i], row=rows[i];
-    var isCur=s.index===currentIndex, isPlayed=!!played[s.index];
+    var isCur=(i===curSlot), isPlayed=(playedSlots.indexOf(i)>=0);
     row.classList.toggle('pcurrent',isCur);
     row.classList.toggle('pplayed',isPlayed&&!isCur);
     row.style.color=(isPlayed&&!isCur)?s.playedColor:'';
     if(isCur){ curPos=i; curEl=row; }
   }
   // Scrolling: current song onto row 4; the start stays at the top, the end at the bottom (clamped)
-  if(presenting && curEl && lastPresentIndex!==currentIndex){
+  if(presenting && curEl && lastPresentSlot!==curSlot){
     var rowH=curEl.getBoundingClientRect().height || (sc.clientHeight/VISIBLE);
     var target=(curPos-(CENTER_ROW-1))*rowH;                 // keeps 3 rows visible above the current one
     var maxS=Math.max(0, sc.scrollHeight-sc.clientHeight);
     target=Math.max(0, Math.min(target, maxS));
     sc.scrollTo({top:target, behavior:'smooth'});
   }
-  lastPresentIndex=currentIndex;
+  lastPresentSlot=curSlot;
 }
 function sizeRows(){   // exactly 7 songs visible: row height = viewport height / 7
   var sc=document.getElementById('presentScroll'); if(!sc)return;
   var h=sc.clientHeight; if(h>0) document.documentElement.style.setProperty('--prow-h',(h/7)+'px');
 }
 function enterPresent(){
-  presenting=true; document.body.classList.add('presenting'); lastPresentIndex=-99;
+  presenting=true; document.body.classList.add('presenting'); lastPresentSlot=-99;
   sizeRows(); renderPresent();
   // Try real browser fullscreen (best effort - may be blocked inside a preview frame)
   var el=document.documentElement;
   if(el.requestFullscreen){ el.requestFullscreen().catch(function(){}); }
-  setTimeout(function(){ sizeRows(); lastPresentIndex=-99; renderPresent(); }, 250); // re-measure after the FS transition
+  setTimeout(function(){ sizeRows(); lastPresentSlot=-99; renderPresent(); }, 250); // re-measure after the FS transition
   flashUI();
 }
 function exitPresent(){
@@ -338,9 +338,9 @@ document.addEventListener('touchstart',function(){ if(presenting)flashUI(); },{p
 document.addEventListener('fullscreenchange',function(){
   // if the user leaves native fullscreen (Esc/gesture), close the overlay as well
   if(!document.fullscreenElement && presenting) exitPresent();
-  else if(presenting){ setTimeout(function(){ sizeRows(); lastPresentIndex=-99; renderPresent(); }, 120); }
+  else if(presenting){ setTimeout(function(){ sizeRows(); lastPresentSlot=-99; renderPresent(); }, 120); }
 });
-window.addEventListener('resize',function(){ if(presenting){ sizeRows(); lastPresentIndex=-99; renderPresent(); } });
+window.addEventListener('resize',function(){ if(presenting){ sizeRows(); lastPresentSlot=-99; renderPresent(); } });
 function esc(s){return String(s).replace(/[&<>"]/g,function(m){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m];});}
 
 /* ---------- Editor ---------- */
@@ -389,13 +389,13 @@ function importJson(ev){ var f=ev.target.files[0]; if(!f)return; var r=new FileR
   r.onload=function(){ try{ data=JSON.parse(r.result); dirty=true; fillEditor(); renderLive(); }catch(e){alert('Invalid JSON file');} }; r.readAsText(f); }
 
 /* ---------- Actions ---------- */
-function setCurrent(idx){
-  if(serverAvailable){ fetch('/api/current',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({index:idx})}).catch(function(){}); }
-  else { currentIndex=idx; if(findByIndex(data.songs,idx))played[idx]=true; renderLive(); }
+function setCurrentSlot(i){
+  if(serverAvailable){ fetch('/api/current',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({slot:i})}).catch(function(){}); }
+  else { curSlot=i; if(playedSlots.indexOf(i)<0)playedSlots.push(i); renderLive(); }
 }
 function resetPlayed(){
   if(serverAvailable){ fetch('/api/reset',{method:'POST'}).catch(function(){}); }
-  else { played={}; renderLive(); }
+  else { playedSlots=[]; renderLive(); }
 }
 
 /* ---------- View ---------- */
