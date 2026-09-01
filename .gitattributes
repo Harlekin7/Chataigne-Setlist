@@ -1,0 +1,9 @@
+# The macOS launchers must keep LF. A CRLF in the shebang line turns
+# "#!/bin/bash" into "#!/bin/bash\r" and macOS answers "bad interpreter".
+*.command text eol=lf
+*.sh      text eol=lf
+
+# The Windows launchers are happiest with CRLF.
+*.bat     text eol=crlf
+
+*.png     binary

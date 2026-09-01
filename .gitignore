@@ -13,3 +13,6 @@ npm-debug.log*
 Thumbs.db
 Desktop.ini
 .DS_Store
+
+# Release archives, rebuilt on demand by tools/build-release.py
+dist/

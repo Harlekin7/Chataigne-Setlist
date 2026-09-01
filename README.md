@@ -5,6 +5,11 @@ machine already knows. Chataigne stays the show engine; this is only control and
 
 Plain Node, **no npm dependencies**. Tested on Node 22.
 
+**Download:** grab the archive for your platform from the
+[latest release](https://github.com/Harlekin7/Chataigne-Setlist/releases/latest) —
+`…-windows.zip` or `…-macos.zip`. Both hold the same module and server; they differ
+only in the double-click launchers.
+
 ---
 
 ## How it works
@@ -66,8 +71,8 @@ Name, fixed index number, active switch and color per song; order by drag & drop
 ```
 setlist-dashboard/
 ├── README.md
-├── INSTALL.bat                       ← install the module (Windows, double-click)
-├── START-DASHBOARD.bat               ← start the server (Windows, double-click)
+├── INSTALL.bat / INSTALL.command     ← install the module (double-click)
+├── START-DASHBOARD.bat / .command    ← start the server (double-click)
 ├── lib/
 │   └── setlist-engine.js             ← shared helpers (order / index)
 ├── test/
@@ -90,15 +95,28 @@ it holds show data. Without it the server starts from a neutral example setlist.
 
 ## Setup
 
-### The quick way (Windows)
+### The quick way
 
 | File | What it does |
 |------|--------------|
-| **`INSTALL.bat`** | checks Node, copies the module to `Documents\Chataigne\modules`, runs the self-test, warns if Chataigne is still open, optionally creates a desktop shortcut |
-| **`START-DASHBOARD.bat`** | starts the server and opens the browser; warns up front if port 8080 or 8000 is already taken |
+| **`INSTALL.bat`** · **`INSTALL.command`** | checks Node, copies the module to `Documents/Chataigne/modules`, runs the self-test, warns if Chataigne is still open, optionally creates a desktop shortcut |
+| **`START-DASHBOARD.bat`** · **`START-DASHBOARD.command`** | starts the server and opens the browser; warns up front if port 8080 or 8000 is already taken |
 
-Double-click `INSTALL.bat`, restart Chataigne, then do steps 3 and 4 below. To use other
-ports, set `set HTTP_PORT=8090` or `set OSC_IN_PORT=8010` in the same console first.
+Take the `.bat` pair on Windows and the `.command` pair on macOS. Double-click the
+installer, restart Chataigne, then do steps 3 and 4 below.
+
+To use other ports, set them before starting the server — `set HTTP_PORT=8090` or
+`set OSC_IN_PORT=8010` in the same console on Windows, `export HTTP_PORT=8090` in the
+same Terminal on macOS.
+
+**First run on macOS.** Files out of a downloaded zip are quarantined, so a double-click
+answers *"cannot be opened because it is from an unidentified developer"*. Right-click
+`INSTALL.command` → **Open** → **Open** once, and macOS remembers it. To clear both
+launchers in one go instead:
+
+```bash
+xattr -dr com.apple.quarantine INSTALL.command START-DASHBOARD.command
+```
 
 ### The manual way
 
